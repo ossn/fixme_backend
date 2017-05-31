@@ -1,0 +1,8 @@
+*.db
+*.pyc
+*~
+.*
+env
+
+# Accept these files in the repository
+!.gitignore
