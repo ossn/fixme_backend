@@ -14,4 +14,3 @@ class UserRepoList(APIView):
         userRepos = UserRepo.objects.all()
         serializer = UserRepoSerializer(userRepos, many=True)
         return Response(serializer.data)
-        
