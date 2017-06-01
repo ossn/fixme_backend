@@ -4,7 +4,8 @@ from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from rest_framework import generics
+import django_filters.rest_framework
 
 class UserRepoList(APIView):
     """
@@ -15,11 +16,11 @@ class UserRepoList(APIView):
         serializer = UserRepoSerializer(userRepos, many=True)
         return Response(serializer.data)
 
-class IssueList(APIView):
+class IssueList(generics.ListCreateAPIView):
     """
     List all Issues.
     """
-    def get(self, request, format=None):
-        issues = Issue.objects.all()
-        serializer = IssueSerializer(issues, many=True)
-        return Response(serializer.data)
+    queryset = Issue.objects.all()
+    serializer_class = IssueSerializer
+    filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
+    filter_fields = ('language', 'tech_stack', 'experience_needed', 'expected_time',)
