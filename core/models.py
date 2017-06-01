@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 from django.db import models
-import uuid
 
 # UserRepo model is used to store the username and repo-name for a repository.
 class UserRepo(models.Model):
@@ -15,22 +14,27 @@ class UserRepo(models.Model):
 
 # Label model for storing labels of an issue.
 class IssueLabel(models.Model):
-    label_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    label_url = models.CharField(max_length=2000)
+    label_id = models.IntegerField(primary_key=True)
+    label_url = models.URLField()
     label_name = models.CharField(max_length=100)
-    label_color = models.CharField(max_length=10)
+    label_color = models.CharField(max_length=6)
+    
+    class Meta:
+        ordering = ('label_name',)
 
 # Issue model is used to store github issues.
 class Issue(models.Model):
-    EASYFIX = 0
-    MODERATE = 1
-    SENIOR = 2
+    EASYFIX = 'Easyfix'
+    MODERATE = 'Moderate'
+    SENIOR = 'Senior'
     EXPERIENCE_NEEDED_CHOICES = (
         (EASYFIX, 'Easyfix'),
         (MODERATE, 'Moderate'),
         (SENIOR, 'Senior'),
     )
-    issue_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+
+    issue_id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=100)
     experience_needed = models.CharField(
         max_length=10,
@@ -42,7 +46,9 @@ class Issue(models.Model):
     tech_stack = models.CharField(max_length=100)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
-    issue_details = models.TextField()
     issue_number = models.IntegerField()
-    issue_labels = models.ForeignKey(IssueLabel, on_delete=models.CASCADE)
-    issue_url = models.CharField(max_length=2000)
+    issue_labels = models.ManyToManyField(IssueLabel)
+    issue_url = models.URLField()
+
+    class Meta:
+        ordering = ('updated_at',)
