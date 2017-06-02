@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.response import Response
 
-class UserRepoList(generics.ListCreateAPIView):
+class UserRepoList(generics.ListAPIView):
     """
     Returns a list of issues, by optionally filtering against
     `repo` and `user` query parameter in the URL.
@@ -17,7 +17,7 @@ class UserRepoList(generics.ListCreateAPIView):
     filter_fields = ('repo', 'user',)
 
 
-class IssueList(generics.ListCreateAPIView):
+class IssueList(generics.ListAPIView):
     """
     Returns a list of issues, by optionally filtering against
     `language`, `tech_stack`, `experience_needed` and `expected_time`

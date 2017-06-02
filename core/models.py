@@ -44,7 +44,7 @@ class Issue(models.Model):
         (MODERATE, 'Moderate'),
         (SENIOR, 'Senior'),
     )
-    # Model attributes start from here.    
+    # Model attributes start from here.
     issue_id = models.IntegerField(primary_key=True)
     title = models.CharField(max_length=100)
     experience_needed = models.CharField(
@@ -58,7 +58,7 @@ class Issue(models.Model):
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
     issue_number = models.IntegerField()
-    issue_labels = models.ManyToManyField(IssueLabel)
+    issue_labels = models.ManyToManyField(IssueLabel, blank=True)
     issue_url = models.URLField()
 
     class Meta:
