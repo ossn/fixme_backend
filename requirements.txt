@@ -3,3 +3,4 @@ djangorestframework==3.6.3
 django_filters==0.2.1
 requests==2.17.3
 celery==4.0.2
+lxml==3.8.0

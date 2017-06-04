@@ -7,6 +7,9 @@ from core.utils.services import request_github_issues
 from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 from datetime import timedelta
+from lxml import html
+
+ISSUE_UPDATE_PERIOD = 15 # in minutes
 
 class UserRepo(models.Model):
     """
@@ -40,13 +43,13 @@ class Issue(models.Model):
     Issue model is used to store github issues.
     """
     # Setting choices for experience needed to solve an issue.
-    EASYFIX = 'Easyfix'
-    MODERATE = 'Moderate'
-    SENIOR = 'Senior'
+    EASYFIX = 'easyfix'
+    MODERATE = 'moderate'
+    SENIOR = 'senior'
     EXPERIENCE_NEEDED_CHOICES = (
-        (EASYFIX, 'Easyfix'),
-        (MODERATE, 'Moderate'),
-        (SENIOR, 'Senior'),
+        (EASYFIX, 'easyfix'),
+        (MODERATE, 'moderate'),
+        (SENIOR, 'senior'),
     )
     # Model attributes start from here.
     issue_id = models.IntegerField(primary_key=True)
@@ -64,16 +67,46 @@ class Issue(models.Model):
     issue_number = models.IntegerField()
     issue_labels = models.ManyToManyField(IssueLabel, blank=True)
     issue_url = models.URLField()
+    issue_body = models.TextField()
 
     class Meta:
         ordering = ('updated_at',) # Ascending order according to updated_at.
 
 
-@periodic_task(run_every=timedelta(seconds=35), name="pupu")
-def pupu():
+@periodic_task(run_every=timedelta(minutes=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
+def periodic_issues_updater():
+    """
+    Update `Issue` model in the database in every 
+    `ISSUE_UPDATE_PERIOD` minutes.
+    """
     list_of_repos = UserRepo.objects.values('user', 'repo',)
     for repo in list_of_repos:
-        issue_data = request_github_issues(repo['user'], repo['repo'])
-        for i in issue_data:
-            issue = Issue(issue_id=i['id'], title=i['title'], expected_time="22 hrs", language="cofeeScript", tech_stack="Django", created_at=i['created_at'], updated_at=i['updated_at'], issue_number=i['number'], issue_url=i['html_url'] )
-            issue.save()
+        issue_list = request_github_issues(repo['user'], repo['repo'])
+        for issue in issue_list:
+            validate_and_store_issue(issue)
+
+def validate_and_store_issue(issue):
+    """
+    Validate issue:
+    if valid - store it into data base,
+    else - Do not store in database
+    """
+    tree = html.fromstring(issue['body'])
+
+    # Parse issue from the tags.
+    experience_needed_list = tree.xpath('experience')
+    language_list = tree.xpath('language')
+    expected_time_list = tree.xpath('expected-time')
+    technology_stack_list = tree.xpath('technology-stack')
+    description_list = tree.xpath('description')
+
+    if experience_needed_list and language_list and expected_time_list and technology_stack_list and description_list:
+        experience_needed = experience_needed_list[0].text_content().strip().lower()
+        language = language_list[0].text_content().strip().lower()
+        expected_time = expected_time_list[0].text_content().strip().lower()
+        technology_stack = technology_stack_list[0].text_content().strip().lower()
+        description = description_list[0].text_content()
+        issue_instance = Issue(issue_id=issue['id'], title=issue['title'], experience_needed=experience_needed, expected_time=expected_time, language=language, tech_stack=technology_stack, created_at=issue['created_at'], updated_at=issue['updated_at'], issue_number=issue['number'], issue_url=issue['html_url'], issue_body=description )
+        issue_instance.save()
+    else :
+        print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'

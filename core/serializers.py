@@ -30,4 +30,4 @@ class IssueSerializer(serializers.ModelSerializer):
         model = Issue
         fields = ('issue_id', 'title', 'experience_needed', 'expected_time',
             'language', 'tech_stack', 'created_at', 'updated_at',
-            'issue_number', 'issue_labels', 'issue_url',)
+            'issue_number', 'issue_labels', 'issue_url', 'issue_body')
