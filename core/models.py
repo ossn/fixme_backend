@@ -2,7 +2,11 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from core.utils.services import request_github_issues
 
+from celery.task.schedules import crontab
+from celery.decorators import periodic_task
+from datetime import timedelta
 
 class UserRepo(models.Model):
     """
@@ -63,3 +67,13 @@ class Issue(models.Model):
 
     class Meta:
         ordering = ('updated_at',) # Ascending order according to updated_at.
+
+
+@periodic_task(run_every=timedelta(seconds=35), name="pupu")
+def pupu():
+    list_of_repos = UserRepo.objects.values('user', 'repo',)
+    for repo in list_of_repos:
+        issue_data = request_github_issues(repo['user'], repo['repo'])
+        for i in issue_data:
+            issue = Issue(issue_id=i['id'], title=i['title'], expected_time="22 hrs", language="cofeeScript", tech_stack="Django", created_at=i['created_at'], updated_at=i['updated_at'], issue_number=i['number'], issue_url=i['html_url'] )
+            issue.save()
