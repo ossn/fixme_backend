@@ -10,4 +10,3 @@ from django.contrib.auth.models import *
 admin.site.unregister(Group)
 admin.site.unregister(User)
 admin.site.register(UserRepo)
-admin.site.register(Issue)

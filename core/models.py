@@ -73,7 +73,7 @@ class Issue(models.Model):
         ordering = ('updated_at',) # Ascending order according to updated_at.
 
 
-@periodic_task(run_every=timedelta(seconds=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
+@periodic_task(run_every=timedelta(minutes=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
 def periodic_issues_updater():
     """
     Update `Issue` model in the database in every 
