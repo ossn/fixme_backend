@@ -73,7 +73,7 @@ class Issue(models.Model):
         ordering = ('updated_at',) # Ascending order according to updated_at.
 
 
-@periodic_task(run_every=timedelta(minutes=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
+@periodic_task(run_every=timedelta(seconds=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
 def periodic_issues_updater():
     """
     Update `Issue` model in the database in every 
@@ -82,8 +82,11 @@ def periodic_issues_updater():
     list_of_repos = UserRepo.objects.values('user', 'repo',)
     for repo in list_of_repos:
         issue_list = request_github_issues(repo['user'], repo['repo'])
-        for issue in issue_list:
-            validate_and_store_issue(issue)
+        if issue_list['error']:
+            print "Error" + str(issue_list['data'])
+        else:
+            for issue in issue_list['data']:
+                validate_and_store_issue(issue)
 
 def validate_and_store_issue(issue):
     """
