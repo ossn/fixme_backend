@@ -3,7 +3,7 @@ Backend api for issue parser app.
 ## Contributing
 Follow below steps for building the project.
 - Install Python 2.7 and pip on your system.
-- Install virtualenv using cmd `pip install virtualenv`.asdda
+- Install virtualenv using cmd `pip install virtualenv`.
 - Clone this repo.
 - cd into the repo.
 - Create virtual env by running `virtualenv env`.
