@@ -89,38 +89,45 @@ def periodic_issues_updater():
 
 def validate_and_store_issue(issue):
     """
-    Validate issue:
-    if valid - store it into data base,
+    Validate issue:- if valid - store it into data base,
     else - Do not store in database
     """
     if issue['state'] == 'open':
         experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
 
         if experience_needed and language and expected_time and technology_stack:
-            experience_needed = experience_needed.strip().lower()
-            language = language.strip().lower()
-            expected_time = expected_time.strip().lower()
-            technology_stack = technology_stack.strip().lower()
-            issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
-                                   experience_needed=experience_needed, expected_time=expected_time,
-                                   language=language, tech_stack=technology_stack,
-                                   created_at=issue['created_at'], updated_at=issue['updated_at'],
-                                   issue_number=issue['number'], issue_url=issue['html_url'],
-                                   issue_body=issue['body'])
-            issue_instance.save()
-            for label in issue['labels']:
-                label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
-                                            label_url=label['url'], label_color=label['color'])
-                label_instance.save()
-                issue_instance.issue_labels.add(label_instance)
+            store_issue_in_db(issue, experience_needed, language, expected_time, technology_stack)
         else:
             print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
     else:
-        try:
-            issue_instance = Issue.objects.get(issue_id=issue['id'])
-            issue_instance.delete()
-        except Exception:
-            print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
+        delete_closed_issues(issue) # Delete closed issues from db.
+
+def store_issue_in_db(issue, experience_needed, language, expected_time, technology_stack):
+    """Stores issue in db"""
+    experience_needed = experience_needed.strip().lower()
+    language = language.strip().lower()
+    expected_time = expected_time.strip().lower()
+    technology_stack = technology_stack.strip().lower()
+    issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
+                           experience_needed=experience_needed, expected_time=expected_time,
+                           language=language, tech_stack=technology_stack,
+                           created_at=issue['created_at'], updated_at=issue['updated_at'],
+                           issue_number=issue['number'], issue_url=issue['html_url'],
+                           issue_body=issue['body'])
+    issue_instance.save()
+    for label in issue['labels']:
+        label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
+                                    label_url=label['url'], label_color=label['color'])
+        label_instance.save()
+        issue_instance.issue_labels.add(label_instance)
+
+def delete_closed_issues(issue):
+    """Delete issues that are closed on GitHub but present in our db"""
+    try:
+        issue_instance = Issue.objects.get(issue_id=issue['id'])
+        issue_instance.delete()
+    except Exception:
+        print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
 
 def parse_issue(issue_body):
     """
