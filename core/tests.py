@@ -5,9 +5,35 @@ This file contains all the tests related to `issue parser core` app.
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from django.test import TestCase
+from rest_framework.test import APIClient
+from rest_framework import status
 
 from .models import UserRepo, parse_issue, validate_and_store_issue, Issue, delete_closed_issues
 from .utils.services import request_github_issues
+
+SAMPLE_ISSUE = {
+    "html_url": "https://github.com/mozillacampusclubs/issue_parser_backend/issues/7",
+    "id": 233564738,
+    "number": 7,
+    "title": "Dockerize Project",
+    "labels": [
+        {
+            "id": 613678729,
+            "url": "https://api.github.com/repos/labels/enhancement",
+            "name": "enhancement",
+            "color": "84b6eb",
+            "default": True
+        }
+    ],
+    "state": "open",
+    "created_at": "2017-06-05T11:47:01Z",
+    "updated_at": "2017-06-06T10:35:57Z",
+    "body": """
+            Experience: Easyfix\r\nExpected-time: 3 hours\r\nLanguage: Python\r\n
+            Technology-stack Django\r\n\r\n## Description\r\n
+            Dockerize this backend project for development and deployment purposes.
+            """
+}
 
 class UserRepoModelTestCase(TestCase):
     """This class defines the test suite for the `UserRepo` model."""
@@ -24,7 +50,7 @@ class UserRepoModelTestCase(TestCase):
         self.user_repo.save()
         new_count = UserRepo.objects.count()
         self.assertNotEqual(old_count, new_count)
-    
+
     def test_user_repo_model_can_delete_a_userrepo(self):
         """Test the `UserRepo` model can delete a `user_repo`."""
         old_count = UserRepo.objects.count()
@@ -34,33 +60,12 @@ class UserRepoModelTestCase(TestCase):
         self.assertEqual(old_count, new_count)
 
 
-class IssueFetcherTestCase(TestCase):
+class IssueModelAndFetcherTestCase(TestCase):
     """This class defines the test suite for the `issue fetcher` component."""
 
     def setUp(self):
-        self.sample_issue = {
-            "html_url": "https://github.com/mozillacampusclubs/issue_parser_backend/issues/7",
-            "id": 233564738,
-            "number": 7,
-            "title": "Dockerize Project",
-            "labels": [
-                {
-                    "id": 613678729,
-                    "url": "https://api.github.com/repos/labels/enhancement",
-                    "name": "enhancement",
-                    "color": "84b6eb",
-                    "default": True
-                }
-            ],
-            "state": "open",
-            "created_at": "2017-06-05T11:47:01Z",
-            "updated_at": "2017-06-06T10:35:57Z",
-            "body": """
-                    Experience: Easyfix\r\nExpected-time: 3 hours\r\nLanguage: Python\r\n
-                    Technology-stack Django\r\n\r\n## Description\r\n
-                    Dockerize this backend project for development and deployment purposes.
-                    """
-        }
+        """Initial setup for running tests."""
+        pass
 
     def test_api_can_request_issues(self):
         """Test the request function"""
@@ -77,23 +82,43 @@ class IssueFetcherTestCase(TestCase):
 
     def test_correct_issue_parsing(self):
         """Test for correct parsing of issues"""
-        parsed = parse_issue(self.sample_issue['body'])
+        issue = SAMPLE_ISSUE.copy()
+        parsed = parse_issue(issue['body'])
         for item in parsed:
             self.assertTrue(item)
 
     def test_validate_and_store_issue(self):
         """Test for validating and storing issues."""
         old_count = Issue.objects.count()
-        validate_and_store_issue(self.sample_issue)
+        validate_and_store_issue(SAMPLE_ISSUE)
         new_count = Issue.objects.count()
         self.assertNotEqual(old_count, new_count)
 
     def test_api_can_delete_closed_issues_in_db(self):
         """Test for checking if issues are deleted when closed online but present in db"""
-        validate_and_store_issue(self.sample_issue)
-        self.sample_issue['state'] = 'closed'
+        issue = SAMPLE_ISSUE.copy()
+        validate_and_store_issue(issue)
+        issue['state'] = 'closed'
         old_count = Issue.objects.count()
-        delete_closed_issues(self.sample_issue)
+        delete_closed_issues(issue)
         new_count = Issue.objects.count()
-        print old_count, new_count
         self.assertLess(new_count, old_count)
+
+class ViewTestCase(TestCase):
+    """This class defines the test suite for the api views."""
+
+    def setUp(self):
+        """Define the test client and other test variables."""
+        self.client = APIClient()
+        issue = SAMPLE_ISSUE.copy()
+        validate_and_store_issue(issue)
+
+    def test_api_can_get_metadata(self):
+        """Test the api can get given metadata."""
+        response = self.client.get('/metadata/', format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_api_can_get_issues_list(self):
+        """Test the api can get given issues list."""
+        response = self.client.get('/issues/', format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
