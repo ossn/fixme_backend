@@ -89,7 +89,7 @@ def periodic_issues_updater():
 
 def validate_and_store_issue(issue):
     """
-    Validate issue:- if valid - store it into data base,
+    Validate issue:- if valid - store it into database,
     else - Do not store in database
     """
     if issue['state'] == 'open':
