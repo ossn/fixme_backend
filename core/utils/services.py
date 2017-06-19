@@ -17,6 +17,3 @@ def request_github_issues(user, repo):
             return {'error': True, 'data': response.json()}
     except:
         return {'error': True, 'data': 'There is no Internet connection'}
-
-
-print request_github_issues('razat249', 'github-view')
