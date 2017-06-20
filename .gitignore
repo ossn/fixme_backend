@@ -5,6 +5,7 @@
 env
 */migrations
 db.sqlite3
+cover
 
 # Accept these files in the repository
 !.gitignore
