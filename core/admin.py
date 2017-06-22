@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from django.contrib import admin
 
 # Register/Unregister models here.
-from core.models import UserRepo
+from core.models import UserRepo, Issue, IssueLabel
 from django.contrib.auth.models import *
 
 admin.site.unregister(Group)

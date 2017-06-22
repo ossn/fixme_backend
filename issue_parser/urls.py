@@ -20,7 +20,8 @@ from django.contrib import admin
 
 urlpatterns = [
     url(r'^userrepos/$', views.UserRepoList.as_view()),
-    # url(r'^userrepos/(?P<pk>[0-9]+)/$', views.SnippetDetail.as_view()),
+    url(r'^issues/$', views.IssueList.as_view()),
+    url(r'^metadata/$', views.MetaData.as_view()),
     url(r'^admin/', admin.site.urls),
 ]
 
