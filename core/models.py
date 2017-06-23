@@ -22,6 +22,9 @@ class UserRepo(models.Model):
     class Meta:
         ordering = ('created',) # Ascending order according to date created.
         unique_together = ("user", "repo") # Avoid repo duplicates.
+    
+    def __str__(self):
+        return '/%s/%s' % (self.user, self.repo)
 
 
 class IssueLabel(models.Model):
