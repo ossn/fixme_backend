@@ -1,7 +1,7 @@
 # Deploying the Back-End
 > This document only contains how to deploy the back-end part of the app for running full app you have to deploy front end client also. You can find the front end client documentation [here](https://github.com/mozillacampusclubs/issue_parser_frontend/)
 
-So lets start with the basic steps on how to deploy this back-end API.
+Let's start with the basic steps on how to deploy this back-end API.
 - Install Python 2.7 and pip on the system.
 - Open a terminal
 - run `pip install -r requirements.txt`
@@ -10,13 +10,14 @@ So lets start with the basic steps on how to deploy this back-end API.
 - run `python manage.py migrate` for migrating database.
 - run `python manage.py createsuperuser` to create a login password for logging in to admin panel.
 - For starting dev-server run `python manage.py runserver`.
+- > You have to add repositories to the system or the app will not fetch issues and hence not work. And issues should follow the below template.
 - **Admin view**: To add repositories head to `/admin/`. Add repositories to the system, which you want to use. The system will fetch the issues of these repositories. you have to fill the username and repo name.
 - Now you also have to setup worker server (alongside main server) for fetching github issues periodically (15 mins). For this follow these steps:
     - Open another terminal and run `celery -A issue_parser beat -l info`.
     - Open one more terminal and run `celery -A issue_parser worker -l info`
 - Now fire up a browser and go to `/issues/` for seeing the json data of issues.
-> You have to add repositories to the system or the app will not fetch issues.
 
+## Issue Template
 **Issues should follow this template to be valid for the system:**
 ```
 Experience: Easyfix/Moderate/Senior

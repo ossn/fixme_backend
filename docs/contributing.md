@@ -1,8 +1,6 @@
 # How to Contribute
 > Help us by creating Pull Requests and solving [issues](https://github.com/mozillacampusclubs/issue_parser_backend/issues).
 
-> For more in-depth knowledge of system read below `How it works`.
-
 **For setting up development environment follow these steps:**
 - Install Python 2.7 and pip on your system.
 - Open a terminal
