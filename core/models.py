@@ -5,7 +5,6 @@ from datetime import timedelta
 from django.db import models
 from core.utils.services import request_github_issues
 
-from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 
 ISSUE_UPDATE_PERIOD = 15 # in minutes
@@ -22,7 +21,7 @@ class UserRepo(models.Model):
     class Meta:
         ordering = ('created',) # Ascending order according to date created.
         unique_together = ("user", "repo") # Avoid repo duplicates.
-    
+
     def __str__(self):
         return '/%s/%s' % (self.user, self.repo)
 
@@ -35,7 +34,7 @@ class IssueLabel(models.Model):
     label_url = models.URLField()
     label_name = models.CharField(max_length=100)
     label_color = models.CharField(max_length=6)
-    
+
     class Meta:
         ordering = ('label_name',) # Ascending order according to label_name.
 
@@ -95,18 +94,36 @@ def validate_and_store_issue(issue):
     Validate issue:- if valid - store it into database,
     else - Do not store in database
     """
-    if issue['state'] == 'open':
-        experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
+    if is_issue_state_open(issue):
+        if is_issue_valid(issue):
+            store_issue_in_db(issue)
 
-        if experience_needed and language and expected_time and technology_stack:
-            store_issue_in_db(issue, experience_needed, language, expected_time, technology_stack)
-        else:
-            print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
+def is_issue_state_open(issue):
+    """
+    Returns true if issue state is open else
+    return false and delete the issue from database.
+    """
+    if issue['state'] == 'open':
+        return True
     else:
         delete_closed_issues(issue) # Delete closed issues from db.
+        return False
 
-def store_issue_in_db(issue, experience_needed, language, expected_time, technology_stack):
+def is_issue_valid(issue):
+    """
+    Checks if issue is valid for system or not.
+    Return True if valid else return false.
+    """
+    parsed = parse_issue(issue['body'])
+    for item in parsed:
+        if not item:
+            return False # issue is not valid
+    print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
+    return True # issue is valid
+
+def store_issue_in_db(issue):
     """Stores issue in db"""
+    experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
     experience_needed = experience_needed.strip().lower()
     language = language.strip().lower()
     expected_time = expected_time.strip().lower()
