@@ -4,6 +4,8 @@
 **For setting up development environment follow these steps:**
 - Install Python 2.7 and pip on your system.
 - Open a terminal
+- run `sudo apt-get update`
+- run `sudo apt-get install python-pip python-dev mysql-server libmysqlclient-dev`
 - Install virtualenv using cmd `pip install virtualenv`.
 - Clone this repo.
 - cd into the repo.

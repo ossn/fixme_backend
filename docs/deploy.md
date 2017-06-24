@@ -2,8 +2,10 @@
 > This document only contains how to deploy the back-end part of the app for running full app you have to deploy front end client also. You can find the front end client documentation [here](https://github.com/mozillacampusclubs/issue_parser_frontend/)
 
 Let's start with the basic steps on how to deploy this back-end API.
-- Install Python 2.7 and pip on the system.
+- Install Python 2.7 on the system.
 - Open a terminal
+- run `sudo apt-get update`
+- run `sudo apt-get install python-pip python-dev mysql-server libmysqlclient-dev`
 - run `pip install -r requirements.txt`
 - **RELEX . . .**
 - run `python manage.py makemigration` for making migrations.
