@@ -5,7 +5,8 @@
 - Install Python 2.7 and pip on your system.
 - Open a terminal
 - run `sudo apt-get update`
-- run `sudo apt-get install python-pip python-dev mysql-server libmysqlclient-dev`
+- run `sudo apt-get install python-pip python-dev mysql-server libmysqlclient-dev`. (use user: `root` and password: `root`. when installing mysql). You can change the user and password in `/issue_parse/settings` file.
+- run `pip install -r requirements.txt`
 - Install virtualenv using cmd `pip install virtualenv`.
 - Clone this repo.
 - cd into the repo.
