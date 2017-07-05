@@ -1,7 +1,8 @@
 from core.models import UserRepo, Issue
 from core.serializers import UserRepoSerializer, IssueSerializer
 from rest_framework import generics
-import django_filters.rest_framework
+from  django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.response import Response
@@ -13,7 +14,7 @@ class UserRepoList(generics.ListAPIView):
     """
     queryset = UserRepo.objects.all()
     serializer_class = UserRepoSerializer
-    filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend,)
     filter_fields = ('repo', 'user',)
 
 
@@ -25,8 +26,9 @@ class IssueList(generics.ListAPIView):
     """
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
-    filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend, OrderingFilter,)
     filter_fields = ('language', 'tech_stack', 'experience_needed', 'expected_time',)
+    ordering_fields = ('experience_needed', 'expected_time')
 
 
 class MetaData(APIView):
