@@ -10,3 +10,4 @@ cover
 # Accept these files in the repository
 !.gitignore
 !.editorconfig
+!.travis.yml
