@@ -5,7 +5,6 @@ from datetime import timedelta
 from django.db import models
 from core.utils.services import request_github_issues
 
-from celery.task.schedules import crontab
 from celery.decorators import periodic_task
 
 ISSUE_UPDATE_PERIOD = 15 # in minutes
@@ -23,6 +22,9 @@ class UserRepo(models.Model):
         ordering = ('created',) # Ascending order according to date created.
         unique_together = ("user", "repo") # Avoid repo duplicates.
 
+    def __str__(self):
+        return '/%s/%s' % (self.user, self.repo)
+
 
 class IssueLabel(models.Model):
     """
@@ -32,7 +34,7 @@ class IssueLabel(models.Model):
     label_url = models.URLField()
     label_name = models.CharField(max_length=100)
     label_color = models.CharField(max_length=6)
-    
+
     class Meta:
         ordering = ('label_name',) # Ascending order according to label_name.
 
@@ -89,38 +91,63 @@ def periodic_issues_updater():
 
 def validate_and_store_issue(issue):
     """
-    Validate issue:
-    if valid - store it into data base,
+    Validate issue:- if valid - store it into database,
     else - Do not store in database
     """
-    if issue['state'] == 'open':
-        experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
+    if is_issue_state_open(issue):
+        if is_issue_valid(issue):
+            store_issue_in_db(issue)
 
-        if experience_needed and language and expected_time and technology_stack:
-            experience_needed = experience_needed.strip().lower()
-            language = language.strip().lower()
-            expected_time = expected_time.strip().lower()
-            technology_stack = technology_stack.strip().lower()
-            issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
-                                   experience_needed=experience_needed, expected_time=expected_time,
-                                   language=language, tech_stack=technology_stack,
-                                   created_at=issue['created_at'], updated_at=issue['updated_at'],
-                                   issue_number=issue['number'], issue_url=issue['html_url'],
-                                   issue_body=issue['body'])
-            issue_instance.save()
-            for label in issue['labels']:
-                label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
-                                            label_url=label['url'], label_color=label['color'])
-                label_instance.save()
-                issue_instance.issue_labels.add(label_instance)
-        else:
-            print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
+def is_issue_state_open(issue):
+    """
+    Returns true if issue state is open else
+    return false and delete the issue from database.
+    """
+    if issue['state'] == 'open':
+        return True
     else:
-        try:
-            issue_instance = Issue.objects.get(issue_id=issue['id'])
-            issue_instance.delete()
-        except Exception:
-            print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
+        delete_closed_issues(issue) # Delete closed issues from db.
+        return False
+
+def is_issue_valid(issue):
+    """
+    Checks if issue is valid for system or not.
+    Return True if valid else return false.
+    """
+    parsed = parse_issue(issue['body'])
+    for item in parsed:
+        if not item:
+            return False # issue is not valid
+    print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
+    return True # issue is valid
+
+def store_issue_in_db(issue):
+    """Stores issue in db"""
+    experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
+    experience_needed = experience_needed.strip().lower()
+    language = language.strip().lower()
+    expected_time = expected_time.strip().lower()
+    technology_stack = technology_stack.strip().lower()
+    issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
+                           experience_needed=experience_needed, expected_time=expected_time,
+                           language=language, tech_stack=technology_stack,
+                           created_at=issue['created_at'], updated_at=issue['updated_at'],
+                           issue_number=issue['number'], issue_url=issue['html_url'],
+                           issue_body=issue['body'])
+    issue_instance.save()
+    for label in issue['labels']:
+        label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
+                                    label_url=label['url'], label_color=label['color'])
+        label_instance.save()
+        issue_instance.issue_labels.add(label_instance)
+
+def delete_closed_issues(issue):
+    """Delete issues that are closed on GitHub but present in our db"""
+    try:
+        issue_instance = Issue.objects.get(issue_id=issue['id'])
+        issue_instance.delete()
+    except Exception:
+        print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
 
 def parse_issue(issue_body):
     """
