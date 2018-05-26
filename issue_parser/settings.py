@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core.apps.CoreConfig',
     'corsheaders',
-    'django_nose',  
+    'django_nose',
 ]
 
 # Use nose to run all tests
@@ -105,7 +105,7 @@ if 'TRAVIS' in os.environ:
             'USER':     'travis',
             'PASSWORD': '',
             'HOST':     'localhost',
-            'PORT':     '',
+            'PORT':     '3306',
         }
     }
 else:
@@ -113,10 +113,10 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': 'issue_parser',
-            'USER': 'root',
+            'USER': 'megastos',
             'PASSWORD': 'root',
-            'HOST': 'localhost',
-            'PORT': '',
+            'HOST': 'db',
+            'PORT': '3306',
         }
     }
 
