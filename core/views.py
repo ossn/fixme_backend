@@ -43,9 +43,11 @@ class MetaData(APIView):
         tech_stack = 'tech_stack'
         experience_needed = 'experience_needed'
 
-        queryset = Issue.objects.values(language, tech_stack, experience_needed,)
+        queryset = Issue.objects.values(
+            language, tech_stack, experience_needed,)
         meta_data = {}
         meta_data[language] = set([tup[language] for tup in queryset])
         meta_data[tech_stack] = set([tup[tech_stack] for tup in queryset])
-        meta_data[experience_needed] = set([tup[experience_needed] for tup in queryset])
+        meta_data[experience_needed] = set(
+            [tup[experience_needed] for tup in queryset])
         return Response(meta_data)
