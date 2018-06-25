@@ -38,6 +38,9 @@ class IssueLabel(models.Model):
     class Meta:
         ordering = ('label_name',)  # Ascending order according to label_name.
 
+    def __str__(self):
+        return self.label_name
+
 
 class Issue(models.Model):
     """
@@ -72,6 +75,9 @@ class Issue(models.Model):
 
     class Meta:
         ordering = ('updated_at',)  # Ascending order according to updated_at.
+
+    def __str__(self):
+        return self.title
 
 
 @periodic_task(run_every=timedelta(minutes=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
