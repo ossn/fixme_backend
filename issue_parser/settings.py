@@ -20,10 +20,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'de()5w12y-*441$7fx@em@g5d)i0@ae7w7!ay4n1$dn6&1_$ge'
+SECRET_KEY = os.environ.get('SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', False)
 
 ALLOWED_HOSTS = []
 
@@ -115,12 +115,12 @@ if 'TRAVIS' in os.environ:
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'issue_parser',
-            'USER': 'megastos',
-            'PASSWORD': 'root',
-            'HOST': 'db',
-            'PORT': '3306',
+            'ENGINE': os.environ.get("DB_ENGINE"),
+            'NAME':  os.environ.get("DB_TABLE"),
+            'USER': os.environ.get("DB_USER"),
+            'PASSWORD': os.environ.get("DB_PASSWORD"),
+            'HOST': os.environ.get("DB_HOST"),
+            'PORT': os.environ.get("DB_PORT"),
             'OPTIONS': {
                 'charset': 'utf8mb4',
             },
