@@ -3,11 +3,39 @@ from __future__ import unicode_literals
 
 from datetime import timedelta
 from django.db import models
+from django_mysql.models import ListTextField
 from core.utils.services import request_github_issues
 
-from celery.decorators import periodic_task
+from celery.decorators import periodic_task, task
 
-ISSUE_UPDATE_PERIOD = 15 # in minutes
+ISSUE_UPDATE_PERIOD = 15  # in minutes
+
+
+class Project(models.Model):
+    # TODO: Parse issue_count from related issues
+    # TODO: Parse tags from related issues
+    """
+    Project model is used to store the projects that are
+    included in the project.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    display_name = models.CharField(max_length=100)
+    fist_color = models.CharField(max_length=14, default="#FF614C")
+    second_color = models.CharField(max_length=14, blank=True)
+    description = models.TextField()
+    logo = models.URLField()
+    link = models.URLField()
+    setup_duration = models.CharField(max_length=100, blank=True)
+    tags = ListTextField(base_field=models.CharField(max_length=50), size=100)
+    issues_count = models.IntegerField()
+
+    class Meta:
+        ordering = ('created',)  # Ascending order according to date created.
+        unique_together = ("link", "display_name")  # Avoid repo duplicates.
+
+    def __str__(self):
+        return self.display_name
+
 
 class UserRepo(models.Model):
     """
@@ -17,6 +45,8 @@ class UserRepo(models.Model):
     user = models.CharField(max_length=100)
     repo = models.CharField(max_length=100)
     created = models.DateTimeField(auto_now_add=True)
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ('created',)  # Ascending order according to date created.

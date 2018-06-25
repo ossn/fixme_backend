@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'corsheaders',
     'django_nose',
+    'django_mysql',
 ]
 
 # Use nose to run all tests

@@ -1,5 +1,5 @@
-from core.models import UserRepo, Issue
-from core.serializers import UserRepoSerializer, IssueSerializer
+from core.models import UserRepo, Issue, Project
+from core.serializers import UserRepoSerializer, IssueSerializer, ProjectSerializer
 from rest_framework import generics
 from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
@@ -71,6 +71,17 @@ class IssueList(generics.ListAPIView):
     ordering_fields = ('experience_needed', 'expected_time')
     filter_backends = (DjangoFilterBackend, OrderingFilter)
 
+
+class ProjectList(generics.ListAPIView):
+    """
+    Returns a list of projects
+    """
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    filter_fields = ("id", "display_name")
+    ordering_fields = ('display_name')
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
 
 
 class MetaData(APIView):

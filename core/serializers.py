@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from core.models import UserRepo, Issue, IssueLabel
+from core.models import UserRepo, Issue, IssueLabel, Project
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    """
+    Serializer for `UserRepo` Model.
+    """
+    class Meta:
+        model = Project
+        fields = ('id', 'logo', 'setup_duration', 'display_name',
+                  'fist_color', 'second_color', 'description', 'issues_count', 'tags')
 
 
 class UserRepoSerializer(serializers.ModelSerializer):
@@ -8,7 +18,7 @@ class UserRepoSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = UserRepo
-        fields = ('id', 'user', 'repo',)
+        fields = ('id', 'user', 'repo', 'project')
 
 
 class IssueLabelSerializer(serializers.ModelSerializer):
