@@ -47,11 +47,11 @@ class Issue(models.Model):
     Issue model is used to store github issues.
     """
     # Setting choices for experience needed to solve an issue.
-    EASYFIX = 'easyfix'
+    EASYFIX = 'easy'
     MODERATE = 'moderate'
     SENIOR = 'senior'
     EXPERIENCE_NEEDED_CHOICES = (
-        (EASYFIX, 'easyfix'),
+        (EASYFIX, 'easy'),
         (MODERATE, 'moderate'),
         (SENIOR, 'senior'),
     )
@@ -72,6 +72,7 @@ class Issue(models.Model):
     issue_labels = models.ManyToManyField(IssueLabel, blank=True)
     issue_url = models.URLField()
     issue_body = models.TextField()
+    issue_type = models.CharField(max_length=100, default="")
 
     class Meta:
         ordering = ('updated_at',)  # Ascending order according to updated_at.
@@ -126,29 +127,41 @@ def is_issue_valid(issue):
     parsed = parse_issue(issue['body'])
     for item in parsed:
         if not item:
-            return False # issue is not valid
+            return False  # issue is not valid
     print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
-    return True # issue is valid
+    return True  # issue is valid
+
 
 def store_issue_in_db(issue):
     """Stores issue in db"""
-    experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
+    experience_needed, language, expected_time, technology_stack = parse_issue(
+        issue['body'])
     experience_needed = experience_needed.strip().lower()
+    if experience_needed == "easyfix":
+        experience_needed = "easy"
     language = language.strip().lower()
     expected_time = expected_time.strip().lower()
     technology_stack = technology_stack.strip().lower()
+    issue_type = ""
     issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
                            experience_needed=experience_needed, expected_time=expected_time,
                            language=language, tech_stack=technology_stack,
                            created_at=issue['created_at'], updated_at=issue['updated_at'],
                            issue_number=issue['number'], issue_url=issue['html_url'],
-                           issue_body=issue['body'])
+                           issue_body=issue['body'], issue_type=issue_type)
     issue_instance.save()
     for label in issue['labels']:
+        try:
+            if label['name'].lower() in ['enhancement', 'bugfix', 'task']:
+                issue_instance.issue_type = label['name'].lower()
+                issue_instance.save()
+        except:
+            print 'Couldn\'t parse label: ' + label
         label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
                                     label_url=label['url'], label_color=label['color'])
         label_instance.save()
         issue_instance.issue_labels.add(label_instance)
+
 
 def delete_closed_issues(issue):
     """Delete issues that are closed on GitHub but present in our db"""
