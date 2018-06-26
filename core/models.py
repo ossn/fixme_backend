@@ -20,7 +20,7 @@ class Project(models.Model):
     """
     created = models.DateTimeField(auto_now_add=True)
     display_name = models.CharField(max_length=100)
-    fist_color = models.CharField(max_length=14, default="#FF614C")
+    first_color = models.CharField(max_length=14, default="#FF614C")
     second_color = models.CharField(max_length=14, blank=True)
     description = models.TextField()
     logo = models.URLField()

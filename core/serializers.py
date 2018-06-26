@@ -10,7 +10,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ('id', 'logo', 'setup_duration', 'display_name',
-                  'fist_color', 'second_color', 'description', 'issues_count', 'tags')
+                  'first_color', 'second_color', 'description', 'issues_count', 'tags')
 
     def to_representation(self, instance):
         response_dict = super(
