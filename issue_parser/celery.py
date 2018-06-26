@@ -5,7 +5,11 @@ from django.conf import settings
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'issue_parser.settings')
-app = Celery('issue_parser')
+broker = "amqp://" + os.environ.get('RABBIT_USERNAME') +\
+    ":" + os.environ.get('RABBIT_PASSWORD') + "@" + \
+    os.environ.get('RABBIT_HOST')+":5672"
+
+app = Celery('issue_parser', broker=broker)
 
 # Using a string here means the worker will not have to
 # pickle the object when using Windows.

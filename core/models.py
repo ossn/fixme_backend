@@ -3,11 +3,39 @@ from __future__ import unicode_literals
 
 from datetime import timedelta
 from django.db import models
+from django_mysql.models import ListTextField
 from core.utils.services import request_github_issues
 
-from celery.decorators import periodic_task
+from celery.decorators import periodic_task, task
 
-ISSUE_UPDATE_PERIOD = 15 # in minutes
+ISSUE_UPDATE_PERIOD = 15  # in minutes
+
+
+class Project(models.Model):
+    # TODO: Parse issue_count from related issues
+    # TODO: Parse tags from related issues
+    """
+    Project model is used to store the projects that are
+    included in the project.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    display_name = models.CharField(max_length=100)
+    first_color = models.CharField(max_length=14, default="#FF614C")
+    second_color = models.CharField(max_length=14, blank=True)
+    description = models.TextField()
+    logo = models.URLField()
+    link = models.URLField()
+    setup_duration = models.CharField(max_length=100, blank=True)
+    tags = ListTextField(base_field=models.CharField(max_length=50), size=100)
+    issues_count = models.IntegerField()
+
+    class Meta:
+        ordering = ('created',)  # Ascending order according to date created.
+        unique_together = ("link", "display_name")  # Avoid repo duplicates.
+
+    def __str__(self):
+        return self.display_name
+
 
 class UserRepo(models.Model):
     """
@@ -17,10 +45,12 @@ class UserRepo(models.Model):
     user = models.CharField(max_length=100)
     repo = models.CharField(max_length=100)
     created = models.DateTimeField(auto_now_add=True)
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
-        ordering = ('created',) # Ascending order according to date created.
-        unique_together = ("user", "repo") # Avoid repo duplicates.
+        ordering = ('created',)  # Ascending order according to date created.
+        unique_together = ("user", "repo")  # Avoid repo duplicates.
 
     def __str__(self):
         return '/%s/%s' % (self.user, self.repo)
@@ -36,7 +66,10 @@ class IssueLabel(models.Model):
     label_color = models.CharField(max_length=6)
 
     class Meta:
-        ordering = ('label_name',) # Ascending order according to label_name.
+        ordering = ('label_name',)  # Ascending order according to label_name.
+
+    def __str__(self):
+        return self.label_name
 
 
 class Issue(models.Model):
@@ -44,11 +77,11 @@ class Issue(models.Model):
     Issue model is used to store github issues.
     """
     # Setting choices for experience needed to solve an issue.
-    EASYFIX = 'easyfix'
+    EASYFIX = 'easy'
     MODERATE = 'moderate'
     SENIOR = 'senior'
     EXPERIENCE_NEEDED_CHOICES = (
-        (EASYFIX, 'easyfix'),
+        (EASYFIX, 'easy'),
         (MODERATE, 'moderate'),
         (SENIOR, 'senior'),
     )
@@ -69,9 +102,13 @@ class Issue(models.Model):
     issue_labels = models.ManyToManyField(IssueLabel, blank=True)
     issue_url = models.URLField()
     issue_body = models.TextField()
+    issue_type = models.CharField(max_length=100, default="")
 
     class Meta:
-        ordering = ('updated_at',) # Ascending order according to updated_at.
+        ordering = ('updated_at',)  # Ascending order according to updated_at.
+
+    def __str__(self):
+        return self.title
 
 
 @periodic_task(run_every=timedelta(minutes=ISSUE_UPDATE_PERIOD), name="periodic_issues_updater")
@@ -89,6 +126,7 @@ def periodic_issues_updater():
             for issue in issue_list['data']:
                 validate_and_store_issue(issue)
 
+
 def validate_and_store_issue(issue):
     """
     Validate issue:- if valid - store it into database,
@@ -98,6 +136,7 @@ def validate_and_store_issue(issue):
         if is_issue_valid(issue):
             store_issue_in_db(issue)
 
+
 def is_issue_state_open(issue):
     """
     Returns true if issue state is open else
@@ -106,8 +145,9 @@ def is_issue_state_open(issue):
     if issue['state'] == 'open':
         return True
     else:
-        delete_closed_issues(issue) # Delete closed issues from db.
+        delete_closed_issues(issue)  # Delete closed issues from db.
         return False
+
 
 def is_issue_valid(issue):
     """
@@ -117,29 +157,41 @@ def is_issue_valid(issue):
     parsed = parse_issue(issue['body'])
     for item in parsed:
         if not item:
-            return False # issue is not valid
+            return False  # issue is not valid
     print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
-    return True # issue is valid
+    return True  # issue is valid
+
 
 def store_issue_in_db(issue):
     """Stores issue in db"""
-    experience_needed, language, expected_time, technology_stack = parse_issue(issue['body'])
+    experience_needed, language, expected_time, technology_stack = parse_issue(
+        issue['body'])
     experience_needed = experience_needed.strip().lower()
+    if experience_needed == "easyfix":
+        experience_needed = "easy"
     language = language.strip().lower()
     expected_time = expected_time.strip().lower()
     technology_stack = technology_stack.strip().lower()
+    issue_type = ""
     issue_instance = Issue(issue_id=issue['id'], title=issue['title'],
                            experience_needed=experience_needed, expected_time=expected_time,
                            language=language, tech_stack=technology_stack,
                            created_at=issue['created_at'], updated_at=issue['updated_at'],
                            issue_number=issue['number'], issue_url=issue['html_url'],
-                           issue_body=issue['body'])
+                           issue_body=issue['body'], issue_type=issue_type)
     issue_instance.save()
     for label in issue['labels']:
+        try:
+            if label['name'].lower() in ['enhancement', 'bugfix', 'task']:
+                issue_instance.issue_type = label['name'].lower()
+                issue_instance.save()
+        except:
+            print 'Couldn\'t parse label: ' + label
         label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
                                     label_url=label['url'], label_color=label['color'])
         label_instance.save()
         issue_instance.issue_labels.add(label_instance)
+
 
 def delete_closed_issues(issue):
     """Delete issues that are closed on GitHub but present in our db"""
@@ -148,6 +200,7 @@ def delete_closed_issues(issue):
         issue_instance.delete()
     except Exception:
         print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
+
 
 def parse_issue(issue_body):
     """
@@ -160,6 +213,7 @@ def parse_issue(issue_body):
     expected_time = find_between(issue_body, 'expected-time', '\r\n')
     technology_stack = find_between(issue_body, 'technology-stack', '\r\n')
     return experience_needed, language, expected_time, technology_stack
+
 
 def find_between(string, first, last):
     """
