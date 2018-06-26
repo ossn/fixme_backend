@@ -6,10 +6,17 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
     Serializer for `UserRepo` Model.
     """
+
     class Meta:
         model = Project
         fields = ('id', 'logo', 'setup_duration', 'display_name',
                   'fist_color', 'second_color', 'description', 'issues_count', 'tags')
+
+    def to_representation(self, instance):
+        response_dict = super(
+            ProjectSerializer, self).to_representation(instance)
+        response_dict["tags"] = [tag for tag in instance.tags]
+        return response_dict
 
 
 class UserRepoSerializer(serializers.ModelSerializer):
