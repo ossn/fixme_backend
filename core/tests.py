@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from requests.exceptions import ConnectionError
 
-from .models import (UserRepo, parse_issue, validate_and_store_issue, Issue, delete_closed_issues,
+from .models import (Repository, parse_issue, validate_and_store_issue, Issue, delete_closed_issues,
                      is_issue_valid, is_issue_state_open, periodic_issues_updater)
 from .utils.mock_api import api_response_issues
 from .utils.services import request_github_issues
@@ -40,28 +40,27 @@ SAMPLE_VALID_ISSUE = {
 }
 
 
-class UserRepoModelTestCase(TestCase):
-    """This class defines the test suite for the `UserRepo` model."""
+class RepositoryModelTestCase(TestCase):
+    """This class defines the test suite for the `Repository` model."""
 
     def setUp(self):
         """Define the test client and other test variables."""
-        self.user = 'razat249'
-        self.repo = 'github-view'
-        self.user_repo = UserRepo(user=self.user, repo=self.repo)
+        self.repo_url = 'https://github.com/razat249/github-view'
+        self.user_repo = Repository(repo_url=self.repo_url)
 
     def test_user_repo_model_can_create_a_userrepo(self):
-        """Test the `UserRepo` model can create a `user_repo`."""
-        old_count = UserRepo.objects.count()
+        """Test the `Repository` model can create a `user_repo`."""
+        old_count = Repository.objects.count()
         self.user_repo.save()
-        new_count = UserRepo.objects.count()
+        new_count = Repository.objects.count()
         self.assertNotEqual(old_count, new_count)
 
     def test_user_repo_model_can_delete_a_userrepo(self):
-        """Test the `UserRepo` model can delete a `user_repo`."""
-        old_count = UserRepo.objects.count()
+        """Test the `Repository` model can delete a `user_repo`."""
+        old_count = Repository.objects.count()
         self.user_repo.save()
         self.user_repo.delete()
-        new_count = UserRepo.objects.count()
+        new_count = Repository.objects.count()
         self.assertEqual(old_count, new_count)
 
 
