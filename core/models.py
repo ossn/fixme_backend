@@ -5,10 +5,12 @@ from datetime import timedelta
 from django.db import models
 from django_mysql.models import ListTextField
 from core.utils.services import request_github_issues
-
 from celery.decorators import periodic_task, task
+import logging
 
 ISSUE_UPDATE_PERIOD = 15  # in minutes
+
+EASY_LABELS = ["help_wanted", "good first issue", "easyfix", "easy"]
 
 
 class Project(models.Model):
@@ -37,23 +39,20 @@ class Project(models.Model):
         return self.display_name
 
 
-class UserRepo(models.Model):
+class Repository(models.Model):
     """
-    UserRepo model is used to store the username and repo-name
-    for a repository.
+    Repository model is used to store the repository url.
     """
-    user = models.CharField(max_length=100)
-    repo = models.CharField(max_length=100)
+    repository_url = models.URLField(unique=True)
     created = models.DateTimeField(auto_now_add=True)
     project = models.ForeignKey(
         Project, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ('created',)  # Ascending order according to date created.
-        unique_together = ("user", "repo")  # Avoid repo duplicates.
 
     def __str__(self):
-        return '/%s/%s' % (self.user, self.repo)
+        return self.repository_url
 
 
 class IssueLabel(models.Model):
@@ -117,11 +116,12 @@ def periodic_issues_updater():
     Update `Issue` model in the database in every
     `ISSUE_UPDATE_PERIOD` minutes.
     """
-    list_of_repos = UserRepo.objects.values('user', 'repo',)
+    list_of_repos = Repository.objects.values('repository_url',)
     for repo in list_of_repos:
-        issue_list = request_github_issues(repo['user'], repo['repo'])
+        issue_list = request_github_issues(
+            repo['repository_url'])
         if issue_list['error']:
-            print "Error" + str(issue_list['data'])
+            logging.error("Error" + str(issue_list['data']))
         else:
             for issue in issue_list['data']:
                 validate_and_store_issue(issue)
@@ -158,7 +158,8 @@ def is_issue_valid(issue):
     for item in parsed:
         if not item:
             return False  # issue is not valid
-    print 'Issue with id ' + str(issue['id']) + ' is not valid for our system.'
+    logging.warning('Issue with id ' +
+                    str(issue['id']) + ' is not valid for our system.')
     return True  # issue is valid
 
 
@@ -167,7 +168,7 @@ def store_issue_in_db(issue):
     experience_needed, language, expected_time, technology_stack = parse_issue(
         issue['body'])
     experience_needed = experience_needed.strip().lower()
-    if experience_needed == "easyfix":
+    if experience_needed in EASY_LABELS:
         experience_needed = "easy"
     language = language.strip().lower()
     expected_time = expected_time.strip().lower()
@@ -186,7 +187,7 @@ def store_issue_in_db(issue):
                 issue_instance.issue_type = label['name'].lower()
                 issue_instance.save()
         except:
-            print 'Couldn\'t parse label: ' + label
+            logging.warning('Couldn\'t parse label: ' + label)
         label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
                                     label_url=label['url'], label_color=label['color'])
         label_instance.save()
@@ -199,7 +200,8 @@ def delete_closed_issues(issue):
         issue_instance = Issue.objects.get(issue_id=issue['id'])
         issue_instance.delete()
     except Exception:
-        print 'Closed issue with id ' + str(issue['id']) + ' is not present is database.'
+        logging.warning('Closed issue with id ' +
+                        str(issue['id']) + ' is not present is database.')
 
 
 def parse_issue(issue_body):

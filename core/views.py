@@ -1,5 +1,5 @@
-from core.models import UserRepo, Issue, Project
-from core.serializers import UserRepoSerializer, IssueSerializer, ProjectSerializer
+from core.models import Repository, Issue, Project
+from core.serializers import RepositorySerializer, IssueSerializer, ProjectSerializer
 from rest_framework import generics
 from rest_framework.filters import OrderingFilter
 from rest_framework.views import APIView
@@ -47,15 +47,15 @@ class IssueFilter(FilterSet):
                   'experience_needed', 'expected_time', 'issue_type')
 
 
-class UserRepoList(generics.ListAPIView):
+class RepositoryList(generics.ListAPIView):
     """
     Returns a list of issues, by optionally filtering against
     `repo` and `user` query parameter in the URL.
     """
-    queryset = UserRepo.objects.all()
-    serializer_class = UserRepoSerializer
+    queryset = Repository.objects.all()
+    serializer_class = RepositorySerializer
     filter_backends = (DjangoFilterBackend,)
-    filter_fields = ('repo', 'user',)
+    filter_fields = ('repository_url',)
 
 
 class IssueList(generics.ListAPIView):

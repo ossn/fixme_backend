@@ -1,10 +1,10 @@
 from rest_framework import serializers
-from core.models import UserRepo, Issue, IssueLabel, Project
+from core.models import Repository, Issue, IssueLabel, Project
 
 
 class ProjectSerializer(serializers.ModelSerializer):
     """
-    Serializer for `UserRepo` Model.
+    Serializer for `Repository` Model.
     """
 
     class Meta:
@@ -19,13 +19,13 @@ class ProjectSerializer(serializers.ModelSerializer):
         return response_dict
 
 
-class UserRepoSerializer(serializers.ModelSerializer):
+class RepositorySerializer(serializers.ModelSerializer):
     """
-    Serializer for `UserRepo` Model.
+    Serializer for `Repository` Model.
     """
     class Meta:
-        model = UserRepo
-        fields = ('id', 'user', 'repo', 'project')
+        model = Repository
+        fields = ('id', 'repository_url', 'project')
 
 
 class IssueLabelSerializer(serializers.ModelSerializer):
