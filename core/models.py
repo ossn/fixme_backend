@@ -43,19 +43,18 @@ class Project(models.Model):
     included in the project.
     """
     created = models.DateTimeField(auto_now_add=True)
-    display_name = models.CharField(max_length=100)
+    display_name = models.TextField(max_length=150)
     first_color = models.CharField(max_length=14, default="#FF614C")
     second_color = models.CharField(max_length=14, blank=True)
     description = models.TextField()
     logo = models.URLField()
-    link = models.URLField()
+    link = models.URLField(unique=True)
     setup_duration = models.CharField(max_length=100, blank=True)
     tags = ListTextField(base_field=models.CharField(max_length=80), size=100)
     issues_count = models.IntegerField()
 
     class Meta:
         ordering = ('created',)  # Ascending order according to date created.
-        unique_together = ("link", "display_name")  # Avoid repo duplicates.
 
     def __str__(self):
         return self.display_name
