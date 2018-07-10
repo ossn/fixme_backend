@@ -42,9 +42,10 @@ class IssueSerializer(serializers.ModelSerializer):
     Serializer for `Issue` Model.
     """
     issue_labels = IssueLabelSerializer(many=True)
+    project = ProjectSerializer()
 
     class Meta:
         model = Issue
         fields = ('issue_id', 'title', 'experience_needed', 'expected_time',
                   'language', 'tech_stack', 'created_at', 'updated_at',
-                  'issue_number', 'issue_labels', 'issue_url', 'issue_body', 'issue_type')
+                  'issue_number', 'issue_labels', 'issue_url', 'issue_body', 'issue_type', 'repo', 'project')

@@ -24,7 +24,8 @@ SECRET_KEY = os.environ.get('SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', False)
-
+SILKY_MAX_REQUEST_BODY_SIZE = 0
+SILKY_MAX_RESPONSE_BODY_SIZE = 0
 ALLOWED_HOSTS = []
 
 # CELERY STUFF

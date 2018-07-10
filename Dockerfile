@@ -11,6 +11,6 @@ WORKDIR /code
 ADD  requirements.txt .
 RUN pip install -r requirements.txt
 ADD . .
-RUN mkdir /code/static
+RUN mkdir  -p /code/static
 RUN chown -R 1000:1000 /code
 USER 1000
