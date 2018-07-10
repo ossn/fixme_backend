@@ -213,13 +213,15 @@ def store_issue_in_db(issue, language, project, repo):
                     issue_instance.save()
 
             except Exception as e:
-                logging.error('Couldn\'t parse label: ' + label + e)
+                logging.error("Couldn't parse label: " + label)
+                logging.error(e)
             label_instance = IssueLabel(label_id=label['id'], label_name=label['name'],
                                         label_url=label['url'], label_color=label['color'])
             label_instance.save()
             issue_instance.issue_labels.add(label_instance)
     except Exception as e:
-        logging.error("Couldn't parse issue: " + issue + e)
+        logging.error("Couldn't parse issue: ")
+        logging.error(e)
 
 
 def delete_closed_issues(issue):
