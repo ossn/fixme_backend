@@ -40,6 +40,7 @@ class IssueFilter(FilterSet):
     experience_needed = ListFilter(name='experience_needed')
     expected_time = ListFilter(name='expected_time')
     issue_type = ListFilter(name='issue_type')
+    project = ListFilter(name='project')
 
     class Meta:
         model = Issue
