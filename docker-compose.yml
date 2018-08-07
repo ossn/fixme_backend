@@ -23,7 +23,5 @@ services:
     environment:
       DATABASE_URL: "postgres://USER:PASSWORD@db:5432/fixme_backend_production?sslmode=disable"
       GITHUB_TOKEN: "ADD_A_TOKEN"
-    ports:
-      - 3000:3000
     links:
      - db:db
