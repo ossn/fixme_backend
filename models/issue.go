@@ -16,7 +16,7 @@ type Issue struct {
 	ID               uuid.UUID     `json:"id" db:"id"`
 	CreatedAt        time.Time     `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at" db:"updated_at"`
-	Title            string        `json:"title" db:"title"`
+	Title            nulls.String  `json:"title" db:"title"`
 	ExperienceNeeded nulls.String  `json:"experience_needed" db:"experience_needed"`
 	ExpectedTime     nulls.String  `json:"expected_time" db:"expected_time"`
 	Language         nulls.String  `json:"language" db:"language"`
@@ -53,8 +53,8 @@ func (i Issues) String() string {
 // This method is not required and may be deleted.
 func (i *Issue) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: i.Title, Name: "Title"},
 		&validators.IntIsPresent{Field: i.GithubID, Name: "GithubID"},
+		&validators.IntIsPresent{Field: i.Number, Name: "Number"},
 		&validators.StringIsPresent{Field: i.URL, Name: "URL"},
 	), nil
 }

@@ -39,14 +39,14 @@ SET default_with_oids = false;
 
 CREATE TABLE public.issues (
     id uuid NOT NULL,
-    title text NOT NULL,
+    title text,
     experience_needed character varying(255) DEFAULT 'moderate'::character varying,
     expected_time character varying(255),
     language character varying(255),
     tech_stack character varying(255),
     github_id integer NOT NULL,
     number integer NOT NULL,
-    labels character varying[] NOT NULL,
+    labels character varying[],
     url text NOT NULL,
     body text,
     type character varying(255),
@@ -132,6 +132,27 @@ ALTER TABLE ONLY public.projects
 
 ALTER TABLE ONLY public.repositories
     ADD CONSTRAINT repositories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_issue_experience_needed; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_issue_experience_needed ON public.issues USING btree (experience_needed);
+
+
+--
+-- Name: index_issue_language; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_issue_language ON public.issues USING btree (language);
+
+
+--
+-- Name: index_issue_type; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_issue_type ON public.issues USING btree (type);
 
 
 --

@@ -156,7 +156,7 @@ func (w *Worker) saveData(issueData issueQueryWithBefore, repository *models.Rep
 		model := &models.Issue{
 			GithubID:     node.DatabaseID,
 			Body:         nulls.String{String: node.Body, Valid: node.Body != ""},
-			Title:        node.Title,
+			Title:        nulls.String{String: node.Title, Valid: node.Title != ""},
 			Closed:       node.Closed,
 			Number:       node.Number,
 			URL:          node.URL,
