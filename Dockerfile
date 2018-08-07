@@ -1,16 +1,32 @@
-FROM python:2.7-alpine
-RUN apk add --update --no-cache --virtual .build-deps \
-  gcc \
-  make \
-  libc-dev \
-  musl-dev \
-  linux-headers \
-  pcre-dev \
-  mysql-dev
-WORKDIR /code
-ADD  requirements.txt .
-RUN pip install -r requirements.txt
-ADD . .
-RUN mkdir  -p /code/static
-RUN chown -R 1000:1000 /code
-USER 1000
+FROM gobuffalo/buffalo:v0.12.4 as builder
+
+RUN apt update && apt install -y git ssh jq curl ca-certificates
+RUN mkdir -p /go/src/github.com/ossn/fixme_backend
+WORKDIR /go/src/github.com/ossn/fixme_backend
+RUN mkdir ~/.ssh && \
+  ssh-keyscan -t rsa github.com > ~/.ssh/known_hosts
+
+# Install dep
+RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/golang/dep/releases/latest | jq -r ".assets[] | select(.name | test(\"dep-linux-amd64\")) |.browser_download_url") && chmod +x /usr/local/bin/dep
+
+# Build app
+COPY . .
+RUN dep ensure
+RUN buffalo build --static -o /bin/app
+
+FROM alpine
+RUN apk add --no-cache bash ca-certificates
+
+WORKDIR /bin/
+
+COPY --from=builder /bin/app .
+
+# Uncomment to run the binary in "production" mode:
+ENV GO_ENV=production
+
+# Bind the app to 0.0.0.0 so it can be seen from outside the container
+ENV ADDR=0.0.0.0
+
+EXPOSE 3000
+
+CMD /bin/app migrate; /bin/app task db:seed; /bin/app

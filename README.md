@@ -1,36 +1,35 @@
-# issue_parser_backend
+# Welcome to Buffalo!
 
-[![Build Status](https://travis-ci.org/razat249/issue_parser_backend.svg?branch=master)](https://travis-ci.org/razat249/issue_parser_backend)
-[![Issues](https://camo.githubusercontent.com/926d8ca67df15de5bd1abac234c0603d94f66c00/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f636f6e747269627574696f6e732d77656c636f6d652d627269676874677265656e2e7376673f7374796c653d666c6174)](https://github.com/razat249/issue_parser_backend/issues)
+Thank you for choosing Buffalo for your web development needs.
 
-Backend API of issue parser app. This repository is required to successfully run the app you can find the front end client [here](https://github.com/mozillacampusclubs/issue_parser_frontend/).
+## Database Setup
 
+It looks like you chose to set up your application using a postgres database! Fantastic!
 
-## How to deploy
-Find the full deployment guide [here](./docs/deploy.md).
-> To successfully run full app, you have to deploy the front end client also. You can find the front end client documentation [here](https://github.com/mozillacampusclubs/issue_parser_frontend/)
+The first thing you need to do is open up the "database.yml" file and edit it to use the correct usernames, passwords, hosts, etc... that are appropriate for your environment.
 
+You will also need to make sure that **you** start/install the database of your choice. Buffalo **won't** install and start postgres for you.
 
-## How to Contribute
-You can report bugs at the [issue tracker](https://github.com/mozillacampusclubs/issue_parser_backend/issues). Find full guide on how to contribute [here](./docs/contributing.md)
+### Create Your Databases
 
-> Help us by creating Pull Requests and solving [issues](https://github.com/mozillacampusclubs/issue_parser_backend/issues).
+Ok, so you've edited the "database.yml" file and started postgres, now Buffalo can create the databases in that file for you:
 
-> For more in-depth knowledge of system read below `How it works`.
+	$ buffalo db create -a
 
-## How it works
-This image of the system below will give you a rough overview of how api works.
-![System Design](./docs/img/system-design.png)
+## Starting the Application
 
-There will be several components in the backend:
-1. **Fetcher** : This component will fetch the data from the github API (issues in our case). This component will do only one thing i.e. fetching the data. I suggest to keep the frequency of data fetching in every 15 mins.
-2. **Parser/Model** : This component will do 3 things:
-Checking if the issue is passing all the quality and documentation criteria.
-Parsing the data according to the schema we have for the issues.
-And saving the data to database.
-3. **Data** : This is database containing two table Repositories and Issues.
-4. **Controller** : This is a thin layer between Model and front end. This layer will handle all the routing and REST APIs stuff.
-5. **Admin View** : Admin view can be used to add or remove repos from the system.
+Buffalo ships with a command that will watch your application and automatically rebuild the Go binary and any assets for you. To do that run the "buffalo dev" command:
 
-<!--## License
-To Do - discuss with mentor.-->
+	$ buffalo dev
+
+If you point your browser to [http://127.0.0.1:3000](http://127.0.0.1:3000) you should see a "Welcome to Buffalo!" page.
+
+**Congratulations!** You now have your Buffalo application up and running.
+
+## What Next?
+
+We recommend you heading over to [http://gobuffalo.io](http://gobuffalo.io) and reviewing all of the great documentation there.
+
+Good luck!
+
+[Powered by Buffalo](http://gobuffalo.io)

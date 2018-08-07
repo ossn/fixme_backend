@@ -1,0 +1,12 @@
+create_table("projects") {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("display_name", "string", {"size": 150})
+	t.Column("first_color", "string", {"default": "#FF614C","size": 14})
+	t.Column("second_color", "string", {"null": true,"size": 14})
+	t.Column("description", "text", {})
+	t.Column("logo", "string", {})
+	t.Column("link", "string", {"unique": true})
+	t.Column("setup_duration", "string", {"null": true,size: 100})
+	t.Column("issues_count", "integer", {})
+	t.Column("tags", "varchar[]", {size: 80})
+}

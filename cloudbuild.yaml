@@ -1,4 +1,0 @@
-#cloudbuild.yaml
-steps:
-- name: ‘docker/compose’
-  args: [‘up’, ‘--build’]

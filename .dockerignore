@@ -1,0 +1,14 @@
+node_modules/
+*.log
+bin/
+.drone.yml
+.editorconfig
+.gitignore
+debug
+*-compose.yml
+README.md
+.idea
+.DS_Store
+.vscode
+vendor/
+.git

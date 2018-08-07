@@ -1,13 +1,14 @@
-*.db
-*.pyc
-*~
-.*
-env
-*/migrations
-db.sqlite3
-cover
-
-# Accept these files in the repository
-!.gitignore
-!.editorconfig
-!.travis.yml
+vendor/
+**/*.log
+**/*.sqlite
+.idea/
+bin/
+tmp/
+node_modules/
+.sass-cache/
+*-packr.go
+public/assets/
+fixme_backend
+.vscode/
+.grifter/
+.env

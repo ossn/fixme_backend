@@ -1,0 +1,6 @@
+- id: "issue.created.success"
+  translation: "Issue was successfully created."
+- id: "issue.updated.success"
+  translation: "Issue was successfully updated."
+- id: "issue.destroyed.success"
+  translation: "Issue was successfully destroyed."

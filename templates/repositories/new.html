@@ -1,0 +1,8 @@
+<div class="page-header">
+  <h1>New Repository</h1>
+</div>
+
+<%= form_for(repository, {action: repositoriesPath(), method: "POST"}) { %>
+  <%= partial("repositories/form.html") %>
+  <a href="<%= repositoriesPath() %>" class="btn btn-warning" data-confirm="Are you sure?">Cancel</a>
+<% } %>

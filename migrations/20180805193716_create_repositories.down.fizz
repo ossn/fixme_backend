@@ -1,0 +1,2 @@
+drop_foreign_key("repositories", "repositories_projects_id_fk", {"if_exists": true})
+drop_table("repositories")
