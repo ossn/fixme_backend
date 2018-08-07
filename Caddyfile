@@ -1,4 +1,4 @@
 api.ossn.club {
   gzip
-  proxy / http://web:300
+  proxy / http://web:3000
 }
