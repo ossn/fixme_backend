@@ -130,6 +130,8 @@ func (w *Worker) getIssues() {
 		return
 	}
 
+	updateProjectOnFinish(&lastUpdatedRepo)
+
 }
 
 func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, repository *models.Repository, language *string) {
@@ -193,7 +195,6 @@ func (w *Worker) saveData(issueData issueQueryWithBefore, repository *models.Rep
 	}
 	if !hasPreviousPage {
 		updateProjectOnFinish(repository)
-
 	}
 }
 
@@ -235,11 +236,24 @@ func updateProjectOnFinish(repository *models.Repository) {
 		fmt.Println(errors.Wrap(err, "failed to find last updated repo"))
 	}
 
+	repos := &models.Repositories{}
+	if err = models.DB.Where("project_id=?", (*repository).ProjectID).All(repos); err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to find repos"))
+	}
+
+	count := 0
+	for _, repo := range *repos {
+		count += repo.IssueCount
+	}
+
 	project := &models.Project{}
-
-	if err = models.DB.Find(&project, (*repository).ProjectID); err != nil {
+	if err = models.DB.Find(project, (*repository).ProjectID); err != nil {
 		fmt.Println(errors.Wrap(err, "Failed to find project"))
+	}
 
+	(*project).IssuesCount = count
+	if err = models.DB.Update(project); err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to update project"))
 	}
 
 }
