@@ -1,4 +1,4 @@
-FROM gobuffalo/buffalo:v0.12.4 as builder
+FROM gobuffalo/buffalo:v0.12.6 as builder
 
 RUN apt update && apt install -y git ssh jq curl ca-certificates
 RUN mkdir -p /go/src/github.com/ossn/fixme_backend
