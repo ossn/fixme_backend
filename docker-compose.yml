@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   db:
     image: postgres:10
@@ -23,5 +23,6 @@ services:
     environment:
       DATABASE_URL: "postgres://USER:PASSWORD@db:5432/fixme_backend_production?sslmode=disable"
       GITHUB_TOKEN: "ADD_A_TOKEN"
+      JWT_SECRET: "ADD_A_JWT_SECRET"
     links:
-     - db:db
+      - db:db

@@ -1,0 +1,5 @@
+create_table("admins") {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("email", "string", {})
+	t.Column("password", "string", {})
+}
