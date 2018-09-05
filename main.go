@@ -1,14 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
-
-	"github.com/ossn/fixme_backend/worker"
+	"os"
+	"os/signal"
 
 	"github.com/ossn/fixme_backend/actions"
+	"github.com/ossn/fixme_backend/worker"
 )
-
-var workerInst = worker.Worker{}
 
 // main is the starting point to your Buffalo application.
 // you can feel free and add to this `main` method, change
@@ -18,7 +18,25 @@ var workerInst = worker.Worker{}
 // application that is. :)
 func main() {
 	app := actions.App()
-	go workerInst.Init()
+
+	ctx := context.Background()
+
+	// trap Ctrl+C and call cancel on the context
+	ctx, cancel := context.WithCancel(ctx)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	defer func() {
+		signal.Stop(c)
+		cancel()
+	}()
+	go func() {
+		select {
+		case <-c:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	go worker.WorkerInst.Init(ctx, c)
 
 	if err := app.Serve(); err != nil {
 		log.Fatal(err)
