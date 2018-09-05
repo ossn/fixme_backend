@@ -6,7 +6,7 @@ create_table("projects") {
 	t.Column("description", "text", {})
 	t.Column("logo", "string", {})
 	t.Column("link", "string", {"unique": true})
-	t.Column("setup_duration", "string", {"null": true,size: 100})
+	t.Column("setup_duration", "string", {"null": true,"size": 100})
 	t.Column("issues_count", "integer", {})
-	t.Column("tags", "varchar[]", {size: 80})
+	t.Column("tags", "varchar[]", {"size": 80})
 }

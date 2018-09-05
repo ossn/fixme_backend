@@ -8,15 +8,17 @@ import (
 	"time"
 
 	"github.com/ossn/fixme_backend/models"
-	"github.com/pkg/errors"
 
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
 
 type (
-	Worker struct{}
+	Worker struct {
+		ctx context.Context
+	}
 
 	/**
 	* GraphQL Types
@@ -63,15 +65,26 @@ type (
 			Issues Issues `graphql:"issues(last: 100, before: $before)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
+
+	tagsQuery struct {
+		Repository struct {
+			RepositoryTopics struct {
+				Nodes []struct {
+					Topic struct {
+						Name string
+					}
+				}
+			} `graphql:"repositoryTopics(first: 100)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
 )
 
 var (
 	client *githubv4.Client
-	ctx    = context.Background()
 )
 
-func (w *Worker) Init() {
-
+func (w *Worker) Init(ctx context.Context, c <-chan os.Signal) {
+	(*w).ctx = ctx
 	token := os.Getenv("GITHUB_TOKEN")
 	var src oauth2.TokenSource
 	if len(token) < 1 {
@@ -84,15 +97,85 @@ func (w *Worker) Init() {
 	httpClient := oauth2.NewClient(context.Background(), src)
 
 	client = githubv4.NewClient(httpClient)
-	go w.StartPolling()
+	go w.startPolling(c)
 }
 
-func (w *Worker) StartPolling() {
+func (w *Worker) startPolling(c <-chan os.Signal) {
+	go func() {
+		<-c
+		os.Exit(1)
+
+	}()
+	go func() {
+		for {
+			go w.UpdateRepositoryTopics()
+			time.Sleep(1 * time.Hour)
+		}
+	}()
 	for {
 
 		//FIXME: Check github limits and run based on those
 		go w.getIssues()
 		time.Sleep(5 * time.Minute)
+	}
+}
+
+func (w *Worker) UpdateRepositoryTopics() {
+	repos := models.Repositories{}
+	err := models.DB.All(&repos)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "failed to get repos"))
+		return
+	}
+	for _, repo := range repos {
+		name, owner, err := getNameAndOwner(repo.RepositoryUrl)
+		if err != nil {
+			continue
+		}
+		tags := tagsQuery{}
+		err = client.Query((*w).ctx, &tags, map[string]interface{}{"name": name, "owner": owner})
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
+			continue
+		}
+
+		repoTags := []string{}
+		for _, tag := range tags.Repository.RepositoryTopics.Nodes {
+			repoTags = append(repoTags, tag.Topic.Name)
+		}
+
+		repo.Tags = repoTags
+		err = models.DB.Update(&repo)
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
+			continue
+		}
+	}
+
+	projects := models.Projects{}
+	err = models.DB.All(&projects)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "failed to get repos"))
+		return
+	}
+	for _, project := range projects {
+		repos = models.Repositories{}
+		err = models.DB.Where("project_id = ?", project.ID).All(&repos)
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "failed to find repos"))
+			continue
+		}
+
+		tags := []string{}
+		for _, repo := range repos {
+			tags = append(tags, repo.Tags...)
+		}
+		project.Tags = tags
+		err = models.DB.Update(&project)
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "failed to save project"))
+			continue
+		}
 	}
 }
 
@@ -104,20 +187,20 @@ func (w *Worker) getIssues() {
 		return
 
 	}
-
-	tmp := strings.Split(strings.TrimSuffix(lastUpdatedRepo.RepositoryUrl, "/"), "/")
-	name := githubv4.String(tmp[len(tmp)-1])
-	owner := githubv4.String(tmp[len(tmp)-2])
+	name, owner, err := getNameAndOwner(lastUpdatedRepo.RepositoryUrl)
+	if err != nil {
+		return
+	}
 	variables := map[string]interface{}{"name": name, "owner": owner}
 	issueData := initialIssueQuery{}
-	err = client.Query(ctx, &issueData, variables)
+	err = client.Query((*w).ctx, &issueData, variables)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "could load initial issues"))
+		fmt.Println(errors.Wrap(err, "couldn't load initial issues"))
 		return
 	}
 
 	languageRequest := language{}
-	err = client.Query(ctx, &languageRequest, variables)
+	err = client.Query((*w).ctx, &languageRequest, variables)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "couldn't find language"))
 		return
@@ -137,7 +220,7 @@ func (w *Worker) getIssues() {
 func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, repository *models.Repository, language *string) {
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
-	err := client.Query(ctx, &issueData, variables)
+	err := client.Query((*w).ctx, &issueData, variables)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "Failed to get additional issues"))
 		return
@@ -202,6 +285,17 @@ func split(r rune) bool {
 	return r == ' ' || r == ':' || r == '.' || r == ','
 }
 
+func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
+
+	tmp := strings.Split(strings.TrimSuffix(url, "/"), "/")
+	if len(tmp) < 2 {
+		err := errors.New(fmt.Sprintf("Couldn't find repo %s", url))
+		fmt.Println(errors.Wrap(err, "failed to find url"))
+		return githubv4.String(""), githubv4.String(""), err
+	}
+	return githubv4.String(tmp[len(tmp)-1]), githubv4.String(tmp[len(tmp)-2]), nil
+}
+
 func searchForMatchingLabels(label *string, model *models.Issue) bool {
 	switch strings.ToLower(*label) {
 	case "help_wanted", "help wanted", "good first issue", "easyfix", "easy":
@@ -257,3 +351,5 @@ func updateProjectOnFinish(repository *models.Repository) {
 	}
 
 }
+
+var WorkerInst = Worker{}

@@ -1,9 +1,12 @@
 package actions
 
 import (
+	"time"
+
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/ossn/fixme_backend/models"
+	"github.com/ossn/fixme_backend/worker"
 	"github.com/pkg/errors"
 )
 
@@ -76,130 +79,179 @@ func (v ProjectsResource) New(c buffalo.Context) error {
 	return c.Render(200, r.Auto(c, &models.Project{}))
 }
 
-// // Create adds a Project to the DB. This function is mapped to the
-// // path POST /projects
-// func (v ProjectsResource) Create(c buffalo.Context) error {
-// 	// Allocate an empty Project
-// 	project := &models.Project{}
+// Create adds a Project to the DB. This function is mapped to the
+// path POST /projects
+func (v ProjectsResource) Create(c buffalo.Context) error {
+	// Allocate an empty Project
+	project := &models.Project{}
 
-// 	// Bind project to the html form elements
-// 	if err := c.Bind(project); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	// Bind project to the html form elements
+	if err := c.Bind(project); err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	// Validate the data from the html form
-// 	verrs, err := tx.ValidateAndCreate(project)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	// Validate the data from the html form
+	verrs, err := tx.ValidateAndCreate(project)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	if verrs.HasAny() {
-// 		// Make the errors available inside the html template
-// 		c.Set("errors", verrs)
+	if verrs.HasAny() {
+		// Make the errors available inside the html template
+		c.Set("errors", verrs)
 
-// 		// Render again the new.html template that the user can
-// 		// correct the input.
-// 		return c.Render(422, r.Auto(c, project))
-// 	}
+		// Render again the new.html template that the user can
+		// correct the input.
+		return c.Render(422, r.Auto(c, project))
+	}
 
-// 	// If there are no errors set a success message
-// 	c.Flash().Add("success", "Project was created successfully")
+	// If there are no errors set a success message
+	c.Flash().Add("success", "Project was created successfully")
 
-// 	// and redirect to the projects index page
-// 	return c.Render(201, r.Auto(c, project))
-// }
+	go worker.WorkerInst.UpdateRepositoryTopics()
+	repo := models.Repository{RepositoryUrl: project.Link, ProjectID: project.ID}
+	count, err := tx.Where("repository_url=?", project.Link).Count(&repo)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-// // Edit renders a edit form for a Project. This function is
-// // mapped to the path GET /projects/{project_id}/edit
-// func (v ProjectsResource) Edit(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+	if count < 1 {
+		verrs, err = tx.ValidateAndCreate(&repo)
 
-// 	// Allocate an empty Project
-// 	project := &models.Project{}
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
-// 	if err := tx.Find(project, c.Param("project_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+		if verrs.HasAny() {
+			// Make the errors available inside the html template
+			c.Set("errors", verrs)
 
-// 	return c.Render(200, r.Auto(c, project))
-// }
+			// Render again the new.html template that the user can
+			// correct the input.
+			return c.Render(422, r.Auto(c, project))
+		}
+	}
 
-// // Update changes a Project in the DB. This function is mapped to
-// // the path PUT /projects/{project_id}
-// func (v ProjectsResource) Update(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+	// and redirect to the projects index page
+	return c.Render(201, r.Auto(c, project))
+}
 
-// 	// Allocate an empty Project
-// 	project := &models.Project{}
+// Edit renders a edit form for a Project. This function is
+// mapped to the path GET /projects/{project_id}/edit
+func (v ProjectsResource) Edit(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	if err := tx.Find(project, c.Param("project_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+	// Allocate an empty Project
+	project := &models.Project{}
 
-// 	// Bind Project to the html form elements
-// 	if err := c.Bind(project); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	if err := tx.Find(project, c.Param("project_id")); err != nil {
+		return c.Error(404, err)
+	}
 
-// 	verrs, err := tx.ValidateAndUpdate(project)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	return c.Render(200, r.Auto(c, project))
+}
 
-// 	if verrs.HasAny() {
-// 		// Make the errors available inside the html template
-// 		c.Set("errors", verrs)
+// Update changes a Project in the DB. This function is mapped to
+// the path PUT /projects/{project_id}
+func (v ProjectsResource) Update(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 		// Render again the edit.html template that the user can
-// 		// correct the input.
-// 		return c.Render(422, r.Auto(c, project))
-// 	}
+	// Allocate an empty Project
+	project := &models.Project{}
 
-// 	// If there are no errors set a success message
-// 	c.Flash().Add("success", "Project was updated successfully")
+	if err := tx.Find(project, c.Param("project_id")); err != nil {
+		return c.Error(404, err)
+	}
 
-// 	// and redirect to the projects index page
-// 	return c.Render(200, r.Auto(c, project))
-// }
+	oldProjectUrl := (*project).Link
 
-// // Destroy deletes a Project from the DB. This function is mapped
-// // to the path DELETE /projects/{project_id}
-// func (v ProjectsResource) Destroy(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+	// Bind Project to the html form elements
+	if err := c.Bind(project); err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	// Allocate an empty Project
-// 	project := &models.Project{}
+	verrs, err := tx.ValidateAndUpdate(project)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	// To find the Project the parameter project_id is used.
-// 	if err := tx.Find(project, c.Param("project_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+	if verrs.HasAny() {
+		// Make the errors available inside the html template
+		c.Set("errors", verrs)
 
-// 	if err := tx.Destroy(project); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+		// Render again the edit.html template that the user can
+		// correct the input.
+		return c.Render(422, r.Auto(c, project))
+	}
 
-// 	// If there are no errors set a flash message
-// 	c.Flash().Add("success", "Project was destroyed successfully")
+	// If there are no errors set a success message
+	c.Flash().Add("success", "Project was updated successfully")
 
-// 	// Redirect to the projects index page
-// 	return c.Render(200, r.Auto(c, project))
-// }
+	go worker.WorkerInst.UpdateRepositoryTopics()
+	if oldProjectUrl != (*project).Link {
+		repo := models.Repository{}
+		if err = tx.Where("project_id=?", project.ID).Where("repository_url=?", oldProjectUrl).First(&repo); err != nil {
+			// if no repo is found just skip update
+			return errors.Wrap(err, "Failed to find repo")
+		}
+		repo.RepositoryUrl = (*project).Link
+		repo.LastParsed = time.Unix(0, 0)
+		verrs, err = tx.ValidateAndUpdate(&repo)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if verrs.HasAny() {
+			// Make the errors available inside the html template
+			c.Set("errors", verrs)
+
+			// Render again the edit.html template that the user can
+			// correct the input.
+			return c.Render(422, r.Auto(c, project))
+		}
+	}
+	// and redirect to the projects index page
+	return c.Render(200, r.Auto(c, project))
+}
+
+// Destroy deletes a Project from the DB. This function is mapped
+// to the path DELETE /projects/{project_id}
+func (v ProjectsResource) Destroy(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
+
+	// Allocate an empty Project
+	project := &models.Project{}
+
+	// To find the Project the parameter project_id is used.
+	if err := tx.Find(project, c.Param("project_id")); err != nil {
+		return c.Error(404, err)
+	}
+
+	if err := tx.Destroy(project); err != nil {
+		return errors.WithStack(err)
+	}
+
+	// If there are no errors set a flash message
+	c.Flash().Add("success", "Project was destroyed successfully")
+
+	// Redirect to the projects index page
+	return c.Render(200, r.Auto(c, project))
+}

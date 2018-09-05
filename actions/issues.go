@@ -57,7 +57,7 @@ func filters(query, param *string, paramName string) {
 
 // List gets all Issues. This function is mapped to the path
 // GET /issues
-func (v IssuesResource) List(c buffalo.Context) error {
+func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	// Get the DB connection from the context
 	tx, ok := c.Value("tx").(*pop.Connection)
 	if !ok {
@@ -82,9 +82,35 @@ func (v IssuesResource) List(c buffalo.Context) error {
 	if err := q.Where(whereClause).All(issues); err != nil {
 		return errors.WithStack(err)
 	}
+	c.Set("pagination", q.Paginator)
 
 	return c.Render(200, r.Auto(c, issues))
 }
+
+// List gets all Issues. This function is mapped to the path
+// GET issues without closed
+func (v IssuesResource) List(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
+
+	issues := &models.Issues{}
+	params := c.Params()
+	// Paginate results. Params "page" and "per_page" control pagination.
+	// Default values are "page=1" and "per_page=20".
+	q := tx.PaginateFromParams(params).Eager()
+
+	// Retrieve all Issues from the DB
+	if err := q.All(issues); err != nil {
+		return errors.WithStack(err)
+	}
+	c.Set("pagination", q.Paginator)
+
+	return c.Render(200, r.Auto(c, issues))
+}
+
 
 // Show gets the data for one Issue. This function is mapped to
 // the path GET /issues/{issue_id}

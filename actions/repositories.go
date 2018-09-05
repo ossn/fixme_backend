@@ -76,130 +76,130 @@ func (v RepositoriesResource) New(c buffalo.Context) error {
 	return c.Render(200, r.Auto(c, &models.Repository{}))
 }
 
-// // Create adds a Repository to the DB. This function is mapped to the
-// // path POST /repositories
-// func (v RepositoriesResource) Create(c buffalo.Context) error {
-// 	// Allocate an empty Repository
-// 	repository := &models.Repository{}
+// Create adds a Repository to the DB. This function is mapped to the
+// path POST /repositories
+func (v RepositoriesResource) Create(c buffalo.Context) error {
+	// Allocate an empty Repository
+	repository := &models.Repository{}
 
-// 	// Bind repository to the html form elements
-// 	if err := c.Bind(repository); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	// Bind repository to the html form elements
+	if err := c.Bind(repository); err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	// Validate the data from the html form
-// 	verrs, err := tx.ValidateAndCreate(repository)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	// Validate the data from the html form
+	verrs, err := tx.ValidateAndCreate(repository)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	if verrs.HasAny() {
-// 		// Make the errors available inside the html template
-// 		c.Set("errors", verrs)
+	if verrs.HasAny() {
+		// Make the errors available inside the html template
+		c.Set("errors", verrs)
 
-// 		// Render again the new.html template that the user can
-// 		// correct the input.
-// 		return c.Render(422, r.Auto(c, repository))
-// 	}
+		// Render again the new.html template that the user can
+		// correct the input.
+		return c.Render(422, r.Auto(c, repository))
+	}
 
-// 	// If there are no errors set a success message
-// 	c.Flash().Add("success", "Repository was created successfully")
+	// If there are no errors set a success message
+	c.Flash().Add("success", "Repository was created successfully")
 
-// 	// and redirect to the repositories index page
-// 	return c.Render(201, r.Auto(c, repository))
-// }
+	// and redirect to the repositories index page
+	return c.Render(201, r.Auto(c, repository))
+}
 
-// // Edit renders a edit form for a Repository. This function is
-// // mapped to the path GET /repositories/{repository_id}/edit
-// func (v RepositoriesResource) Edit(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+// Edit renders a edit form for a Repository. This function is
+// mapped to the path GET /repositories/{repository_id}/edit
+func (v RepositoriesResource) Edit(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	// Allocate an empty Repository
-// 	repository := &models.Repository{}
+	// Allocate an empty Repository
+	repository := &models.Repository{}
 
-// 	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
+		return c.Error(404, err)
+	}
 
-// 	return c.Render(200, r.Auto(c, repository))
-// }
+	return c.Render(200, r.Auto(c, repository))
+}
 
-// // Update changes a Repository in the DB. This function is mapped to
-// // the path PUT /repositories/{repository_id}
-// func (v RepositoriesResource) Update(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+// Update changes a Repository in the DB. This function is mapped to
+// the path PUT /repositories/{repository_id}
+func (v RepositoriesResource) Update(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	// Allocate an empty Repository
-// 	repository := &models.Repository{}
+	// Allocate an empty Repository
+	repository := &models.Repository{}
 
-// 	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
+		return c.Error(404, err)
+	}
 
-// 	// Bind Repository to the html form elements
-// 	if err := c.Bind(repository); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	// Bind Repository to the html form elements
+	if err := c.Bind(repository); err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	verrs, err := tx.ValidateAndUpdate(repository)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	verrs, err := tx.ValidateAndUpdate(repository)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	if verrs.HasAny() {
-// 		// Make the errors available inside the html template
-// 		c.Set("errors", verrs)
+	if verrs.HasAny() {
+		// Make the errors available inside the html template
+		c.Set("errors", verrs)
 
-// 		// Render again the edit.html template that the user can
-// 		// correct the input.
-// 		return c.Render(422, r.Auto(c, repository))
-// 	}
+		// Render again the edit.html template that the user can
+		// correct the input.
+		return c.Render(422, r.Auto(c, repository))
+	}
 
-// 	// If there are no errors set a success message
-// 	c.Flash().Add("success", "Repository was updated successfully")
+	// If there are no errors set a success message
+	c.Flash().Add("success", "Repository was updated successfully")
 
-// 	// and redirect to the repositories index page
-// 	return c.Render(200, r.Auto(c, repository))
-// }
+	// and redirect to the repositories index page
+	return c.Render(200, r.Auto(c, repository))
+}
 
-// // Destroy deletes a Repository from the DB. This function is mapped
-// // to the path DELETE /repositories/{repository_id}
-// func (v RepositoriesResource) Destroy(c buffalo.Context) error {
-// 	// Get the DB connection from the context
-// 	tx, ok := c.Value("tx").(*pop.Connection)
-// 	if !ok {
-// 		return errors.WithStack(errors.New("no transaction found"))
-// 	}
+// Destroy deletes a Repository from the DB. This function is mapped
+// to the path DELETE /repositories/{repository_id}
+func (v RepositoriesResource) Destroy(c buffalo.Context) error {
+	// Get the DB connection from the context
+	tx, ok := c.Value("tx").(*pop.Connection)
+	if !ok {
+		return errors.WithStack(errors.New("no transaction found"))
+	}
 
-// 	// Allocate an empty Repository
-// 	repository := &models.Repository{}
+	// Allocate an empty Repository
+	repository := &models.Repository{}
 
-// 	// To find the Repository the parameter repository_id is used.
-// 	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
-// 		return c.Error(404, err)
-// 	}
+	// To find the Repository the parameter repository_id is used.
+	if err := tx.Find(repository, c.Param("repository_id")); err != nil {
+		return c.Error(404, err)
+	}
 
-// 	if err := tx.Destroy(repository); err != nil {
-// 		return errors.WithStack(err)
-// 	}
+	if err := tx.Destroy(repository); err != nil {
+		return errors.WithStack(err)
+	}
 
-// 	// If there are no errors set a flash message
-// 	c.Flash().Add("success", "Repository was destroyed successfully")
+	// If there are no errors set a flash message
+	c.Flash().Add("success", "Repository was destroyed successfully")
 
-// 	// Redirect to the repositories index page
-// 	return c.Render(200, r.Auto(c, repository))
-// }
+	// Redirect to the repositories index page
+	return c.Render(200, r.Auto(c, repository))
+}

@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.9
--- Dumped by pg_dump version 9.6.9
+-- Dumped from database version 10.5
+-- Dumped by pg_dump version 10.5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -32,6 +32,21 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 SET default_tablespace = '';
 
 SET default_with_oids = false;
+
+--
+-- Name: admins; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.admins (
+    id uuid NOT NULL,
+    email character varying(255) NOT NULL,
+    password character varying(255) NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.admins OWNER TO postgres;
 
 --
 -- Name: issues; Type: TABLE; Schema: public; Owner: postgres
@@ -93,7 +108,8 @@ CREATE TABLE public.repositories (
     issue_count integer DEFAULT 0 NOT NULL,
     last_parsed timestamp without time zone DEFAULT '1999-01-08 00:00:00'::timestamp without time zone NOT NULL,
     created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    updated_at timestamp without time zone NOT NULL,
+    tags character varying[]
 );
 
 
@@ -109,6 +125,14 @@ CREATE TABLE public.schema_migration (
 
 
 ALTER TABLE public.schema_migration OWNER TO postgres;
+
+--
+-- Name: admins admins_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.admins
+    ADD CONSTRAINT admins_pkey PRIMARY KEY (id);
+
 
 --
 -- Name: issues issues_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres

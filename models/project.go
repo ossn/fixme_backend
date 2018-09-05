@@ -50,7 +50,6 @@ func (p *Project) Validate(tx *pop.Connection) (*validate.Errors, error) {
 		&validators.StringIsPresent{Field: p.Description, Name: "Description"},
 		&validators.StringIsPresent{Field: p.Logo, Name: "Logo"},
 		&validators.StringIsPresent{Field: p.Link, Name: "Link"},
-		&validators.IntIsPresent{Field: p.IssuesCount, Name: "IssuesCount"},
 	), nil
 }
 

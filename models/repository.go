@@ -5,21 +5,23 @@ import (
 	"time"
 
 	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
 )
 
 type Repository struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
-	RepositoryUrl string    `json:"repository_url" db:"repository_url"`
-	Project       Project   `json:"project" db:"-" belongs_to:"project"`
-	ProjectID     uuid.UUID `json:"project_id" db:"project_id"`
-	IssueCount    int       `json:"issue_count" db:"issue_count"`
-	Issues        Issues    `json:"issues" db:"-" has_many:"issues"`
-	LastParsed    time.Time `json:"-" db:"last_parsed"`
+	ID            uuid.UUID     `json:"id" db:"id"`
+	CreatedAt     time.Time     `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at" db:"updated_at"`
+	RepositoryUrl string        `json:"repository_url" db:"repository_url"`
+	Project       Project       `json:"project" db:"-" belongs_to:"project"`
+	ProjectID     uuid.UUID     `json:"project_id" db:"project_id"`
+	IssueCount    int           `json:"issue_count" db:"issue_count"`
+	Issues        Issues        `json:"issues" db:"-" has_many:"issues"`
+	LastParsed    time.Time     `json:"-" db:"last_parsed"`
+	Tags          slices.String `json:"tags" db:"tags"`
 }
 
 // String is not required by pop and may be deleted
