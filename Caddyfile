@@ -1,4 +1,13 @@
 api.ossn.club {
   gzip
   proxy / http://web:3000
+  header /api {
+    Access-Control-Allow-Origin  "https://fixme.ossn.club"
+    Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, HEAD"
+    Access-Control-Allow-Credentials true
+    Access-Control-Allow-Headers "*"
+    Access-Control-Expose-Headers "X-Pagination"
+    -Server
+  }
+
 }
