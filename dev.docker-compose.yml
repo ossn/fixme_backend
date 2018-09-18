@@ -1,0 +1,24 @@
+version: "3"
+services:
+  db:
+    image: postgres:10
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: PASSWORD
+      POSTGRES_DB: fixme_backend_production
+      POSTGRES_USER: USER
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    restart: unless-stopped
+    volumes:
+      - ./:/go/src/github.com/ossn/fixme_backend/
+    environment:
+      DATABASE_URL: "postgres://USER:PASSWORD@db:5432/fixme_backend_production?sslmode=disable"
+      GITHUB_TOKEN: "ADD_A_TOKEN"
+      JWT_SECRET: "ADD_A_JWT_SECRET"
+    ports:
+      - 3000:3000
+    links:
+      - db:db
