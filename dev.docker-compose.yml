@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: PASSWORD
-      POSTGRES_DB: fixme_backend_production
+      POSTGRES_DB: fixme_backend_development
       POSTGRES_USER: USER
   web:
     build:
