@@ -77,6 +77,14 @@ type (
 			} `graphql:"repositoryTopics(first: 100)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
+
+	issueStatusQuery struct {
+		Repository struct {
+			Issue struct {
+				Closed bool
+			} `graphql:"issue(number: $number)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
 )
 
 var (
@@ -144,10 +152,13 @@ func (w *Worker) UpdateRepositoryTopics() {
 			repoTags = append(repoTags, tag.Topic.Name)
 		}
 
-		repo.Tags = repoTags
-		err = models.DB.Update(&repo)
+		repo.Tags = trimArray(repoTags)
+		verr, err := models.DB.ValidateAndUpdate(&repo)
+		if verr.HasAny() {
+			fmt.Println(verr.Error())
+		}
 		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
+			fmt.Println(errors.Wrap(err, "couldn't save repos from github"))
 			continue
 		}
 	}
@@ -170,8 +181,13 @@ func (w *Worker) UpdateRepositoryTopics() {
 		for _, repo := range repos {
 			tags = append(tags, repo.Tags...)
 		}
+		tags = trimArray(tags)
 		project.Tags = tags
-		err = models.DB.Update(&project)
+		verr, err := models.DB.ValidateAndUpdate(&project)
+		if verr.HasAny() {
+			fmt.Println(verr.Error())
+			continue
+		}
 		if err != nil {
 			fmt.Println(errors.Wrap(err, "failed to save project"))
 			continue
@@ -182,11 +198,14 @@ func (w *Worker) UpdateRepositoryTopics() {
 func (w *Worker) getIssues() {
 	lastUpdatedRepo := models.Repository{}
 	err := models.DB.Order("last_parsed asc").First(&lastUpdatedRepo)
+
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "failed to get issues"))
 		return
-
 	}
+
+	defer (*w).updateProjectOnFinish(&lastUpdatedRepo)
+
 	name, owner, err := getNameAndOwner(lastUpdatedRepo.RepositoryUrl)
 	if err != nil {
 		return
@@ -212,8 +231,6 @@ func (w *Worker) getIssues() {
 		go w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name)
 		return
 	}
-
-	updateProjectOnFinish(&lastUpdatedRepo)
 
 }
 
@@ -263,26 +280,120 @@ func (w *Worker) saveData(issueData issueQueryWithBefore, repository *models.Rep
 			}
 		}
 
-		model.Labels = labels
-		if !model.ExperienceNeeded.Valid {
-			model.ExperienceNeeded = nulls.String{String: "moderate", Valid: true}
+		(*model).Labels = labels
+		if !(*model).ExperienceNeeded.Valid {
+			(*model).ExperienceNeeded = nulls.String{String: "moderate", Valid: true}
 		}
-		if err := models.DB.Where("github_id = ?", node.DatabaseID).First(&models.Issue{}); err != nil {
+		issue := models.Issue{}
+		if err := models.DB.Where("github_id = ?", node.DatabaseID).First(&issue); err != nil {
 			err := models.DB.Create(model)
 			if err != nil {
 				fmt.Println(errors.Wrap(err, "failed to create model"))
 			}
 			continue
 		}
-		models.DB.Update(model)
+		(*model).ID = issue.ID
+		(*model).UpdatedAt = time.Now()
+		models.DB.ValidateAndUpdate(model)
 	}
 	if !hasPreviousPage {
-		updateProjectOnFinish(repository)
+		(*w).updateProjectOnFinish(repository)
+	}
+}
+
+func (w *Worker) updateProjectOnFinish(repository *models.Repository) {
+	go (*w).searchForDanglingIssues(repository)
+	var err error
+
+	(*repository).IssueCount, err = models.DB.Where("closed=false and repository_id=?", (*repository).ID).Count(&models.Issue{})
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to count"))
+	}
+
+	(*repository).LastParsed = time.Now()
+	verr, err := models.DB.ValidateAndUpdate(repository)
+	if verr.HasAny() {
+		fmt.Println(verr.Error())
+	}
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "failed update last parsed repo"))
+	}
+
+	repos := &models.Repositories{}
+	if err = models.DB.Where("project_id=?", (*repository).ProjectID).All(repos); err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to find repos"))
+	}
+
+	count := 0
+	for _, repo := range *repos {
+		count += repo.IssueCount
+	}
+
+	project := &models.Project{}
+	if err = models.DB.Find(project, (*repository).ProjectID); err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to find project"))
+	}
+
+	(*project).IssuesCount = count
+	verr, err = models.DB.ValidateAndUpdate(project)
+	if verr.HasAny() {
+		fmt.Println(verr.Error())
+	}
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to update project"))
+	}
+
+}
+
+func (w *Worker) searchForDanglingIssues(repository *models.Repository) {
+	issues := models.Issues{}
+	name, owner, err := getNameAndOwner((*repository).RepositoryUrl)
+	if err != nil {
+		return
+	}
+	err = models.DB.Where("updated_at < current_timestamp - interval '6 minutes' and closed = false and project_id = ?", (*repository).ProjectID).All(&issues)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "Failed to find unclosed issues"))
+		return
+	}
+
+	for _, issue := range issues {
+		issueStatus := issueStatusQuery{}
+		requestParams := map[string]interface{}{
+			"name": name, "owner": owner, "number": githubv4.Int(issue.Number)}
+		err = client.Query((*w).ctx, &issueStatus, requestParams)
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
+			continue
+		}
+
+		closed := issueStatus.Repository.Issue.Closed
+
+		if closed {
+			issue.Closed = true
+			verr, err := models.DB.ValidateAndUpdate(&issue)
+			if verr.HasAny() {
+				fmt.Println(verr.Error())
+			}
+			if err != nil {
+				fmt.Println(errors.Wrap(err, "couldn't update issue"))
+			}
+		}
 	}
 }
 
 func split(r rune) bool {
 	return r == ' ' || r == ':' || r == '.' || r == ','
+}
+
+func trimArray(s []string) []string {
+	var r []string
+	for _, str := range s {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
 }
 
 func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
@@ -315,41 +426,6 @@ func searchForMatchingLabels(label *string, model *models.Issue) bool {
 		return true
 	}
 	return false
-}
-
-func updateProjectOnFinish(repository *models.Repository) {
-	var err error
-
-	(*repository).IssueCount, err = models.DB.Where("closed=false and repository_id=?", repository.ID).Count(&models.Issue{})
-	if err != nil {
-		fmt.Println(errors.Wrap(err, "Failed to count"))
-	}
-
-	(*repository).LastParsed = time.Now()
-	if err = models.DB.Update(repository); err != nil {
-		fmt.Println(errors.Wrap(err, "failed to find last updated repo"))
-	}
-
-	repos := &models.Repositories{}
-	if err = models.DB.Where("project_id=?", (*repository).ProjectID).All(repos); err != nil {
-		fmt.Println(errors.Wrap(err, "Failed to find repos"))
-	}
-
-	count := 0
-	for _, repo := range *repos {
-		count += repo.IssueCount
-	}
-
-	project := &models.Project{}
-	if err = models.DB.Find(project, (*repository).ProjectID); err != nil {
-		fmt.Println(errors.Wrap(err, "Failed to find project"))
-	}
-
-	(*project).IssuesCount = count
-	if err = models.DB.Update(project); err != nil {
-		fmt.Println(errors.Wrap(err, "Failed to update project"))
-	}
-
 }
 
 var WorkerInst = Worker{}
