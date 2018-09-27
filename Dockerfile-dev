@@ -14,4 +14,4 @@ COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure -vendor-only
 
 COPY . .
-CMD buffalo migrate; buffalo db:seed; buffalo dev
+CMD dep ensure -vendor-only; buffalo db migrate up; buffalo task db:seed; buffalo dev
