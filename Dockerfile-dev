@@ -12,6 +12,6 @@ RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/gola
 # Build app
 COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure -vendor-only
-
+ENV ADDR=0.0.0.0
 COPY . .
 CMD dep ensure -vendor-only; buffalo db migrate up; buffalo task db:seed; buffalo dev
