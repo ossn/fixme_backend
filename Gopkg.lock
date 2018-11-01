@@ -98,12 +98,11 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:333d6a1aa88fbc90e9148d999032fe5574c3d52499b7fa843c68819fb431e1aa"
+  digest = "1:f52f93602fde279cd01e885f5bc0cc438f8a1d599590aca5227cbc745adcb21d"
   name = "github.com/gobuffalo/buffalo"
   packages = [
     ".",
     "binding",
-    "middleware",
     "render",
     "servers",
     "worker",
@@ -122,6 +121,17 @@
   pruneopts = "UT"
   revision = "3747f3756a4915200132e2b74bbc93e1182cf04a"
   version = "v1.6.7"
+
+[[projects]]
+  digest = "1:13135d6460447c1c3011f4fa86fc8637ea92c986746ce9ecbd1ec7441c597824"
+  name = "github.com/gobuffalo/buffalo-pop"
+  packages = [
+    "pop",
+    "pop/popmw",
+  ]
+  pruneopts = "UT"
+  revision = "e9673e6747d06c4bd1f1e75856c9bb6db168bd84"
+  version = "v1.1.8"
 
 [[projects]]
   digest = "1:72139cbee5a41ff8a322681be104aa8d7e7c92a5f3ad5501ea3505042b050b57"
@@ -221,11 +231,27 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:5333c9c62a1e737c1a478c3c7ad02c69b5504d0cdd35c73a75890959ee2a4afb"
+  name = "github.com/gobuffalo/mw-contenttype"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "74f5a47f4d56946ce59a0179c76bd2bc112c1b85"
+
+[[projects]]
+  branch = "master"
   digest = "1:09fa6d091e821158250363f83fc8efc38f3ff8f850df54578e65a7eb132649b1"
   name = "github.com/gobuffalo/mw-csrf"
   packages = ["."]
   pruneopts = "UT"
   revision = "446ff26e108b9a8933dfc854d37a68d5adf2c226"
+
+[[projects]]
+  branch = "master"
+  digest = "1:29b501ddc9a2f895cbd1ed4670a0322ecbf677529d43fdca7de9b73a78461096"
+  name = "github.com/gobuffalo/mw-paramlogger"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d6ee392ec72e2863654657a8449a58e47420e617"
 
 [[projects]]
   branch = "master"
@@ -266,7 +292,7 @@
   version = "v3.7.22"
 
 [[projects]]
-  digest = "1:f94da815d78811fcd05446860b7ceba8308cbe8238b47eb09abeb30462d18e97"
+  digest = "1:6eb35a4b12e7d749da038c00553ce82a100bf6d858a9a685ad61677f7abb42c9"
   name = "github.com/gobuffalo/pop"
   packages = [
     ".",
@@ -278,8 +304,8 @@
     "slices",
   ]
   pruneopts = "UT"
-  revision = "9c8883450d22d078ee2daeacf47c37f9f213bde4"
-  version = "v4.8.7"
+  revision = "9d5dff8a5b85dcb7bcd19e6827c578c3c7eb40d6"
+  version = "v4.8.8"
 
 [[projects]]
   digest = "1:b7ec600153e9198cf5c509ad9ac7cef3f1699a224ff8698136b20e6324782967"
@@ -806,9 +832,11 @@
   input-imports = [
     "github.com/dgrijalva/jwt-go",
     "github.com/gobuffalo/buffalo",
-    "github.com/gobuffalo/buffalo/middleware",
+    "github.com/gobuffalo/buffalo-pop/pop/popmw",
     "github.com/gobuffalo/buffalo/render",
     "github.com/gobuffalo/envy",
+    "github.com/gobuffalo/mw-contenttype",
+    "github.com/gobuffalo/mw-paramlogger",
     "github.com/gobuffalo/mw-tokenauth",
     "github.com/gobuffalo/packr",
     "github.com/gobuffalo/pop",
@@ -819,6 +847,7 @@
     "github.com/gobuffalo/validate",
     "github.com/gobuffalo/validate/validators",
     "github.com/gobuffalo/x/sessions",
+    "github.com/gofrs/uuid",
     "github.com/markbates/grift/grift",
     "github.com/pkg/errors",
     "github.com/rs/cors",
