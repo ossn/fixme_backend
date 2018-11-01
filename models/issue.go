@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -34,23 +33,9 @@ type Issue struct {
 	Labels           slices.String `json:"labels" db:"labels"`
 }
 
-// String is not required by pop and may be deleted
-func (i Issue) String() string {
-	ji, _ := json.Marshal(i)
-	return string(ji)
-}
-
-// Issues is not required by pop and may be deleted
 type Issues []Issue
 
-// String is not required by pop and may be deleted
-func (i Issues) String() string {
-	ji, _ := json.Marshal(i)
-	return string(ji)
-}
-
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
-// This method is not required and may be deleted.
 func (i *Issue) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.IntIsPresent{Field: i.GithubID, Name: "GithubID"},
@@ -60,13 +45,11 @@ func (i *Issue) Validate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
-// This method is not required and may be deleted.
 func (i *Issue) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
 // ValidateUpdate gets run every time you call "pop.ValidateAndUpdate" method.
-// This method is not required and may be deleted.
 func (i *Issue) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
