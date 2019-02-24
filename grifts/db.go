@@ -28,7 +28,7 @@ var repositories = models.Repositories{
 			FirstColor:  "#ABDEF5",
 			SecondColor: nulls.String{String: "#CDCFEE", Valid: true},
 			Description: "The Common Voice project is Mozilla’s initiative to help teach machines how real people speak.\nVoice is natural, voice is human. That’s why we’re fascinated with creating usable voice technology for our machines. But to create voice systems, an extremely large amount of voice data is required.\n\nMost of the data used by large companies isn’t available to the majority of people. We think that stifles innovation. So we’ve launched Project Common Voice, a project to help make voice recognition open to everyone.",
-			Logo:        "https://voice.mozilla.org/img/robot-greetings.png",
+			Logo:        "https://voice.mozilla.org/img/cv-logo-bw.svg",
 			Link:        "https://voice.mozilla.org/en",
 			Tags:        []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
 			IssuesCount: 33,
