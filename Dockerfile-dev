@@ -1,4 +1,4 @@
-FROM gobuffalo/buffalo:v0.12.6
+FROM gobuffalo/buffalo:v0.13.1
 
 RUN apt update && apt install -y git ssh jq curl ca-certificates
 RUN mkdir -p /go/src/github.com/ossn/fixme_backend
@@ -14,4 +14,4 @@ COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure -vendor-only
 ENV ADDR=0.0.0.0
 COPY . .
-CMD dep ensure -vendor-only; buffalo db migrate up; buffalo task db:seed; buffalo dev
+CMD buffalo db migrate; buffalo task db:seed; buffalo dev
