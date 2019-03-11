@@ -86,6 +86,12 @@ type (
 			} `graphql:"issue(number: $number)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
+
+	rateLimitQuery struct {
+		RateLimit struct {
+			Remaining int `graphql:"remaining"`
+		} `graphql:"rateLimit"`
+	}
 )
 
 var (
@@ -122,8 +128,26 @@ func (w *Worker) startPolling(c <-chan os.Signal) {
 	for {
 		//TODO: Check github limits and run based on those
 		go w.getInitialIssues()
+		if w.checkRateLimitStatus() == true {
+			time.Sleep(time.Hour)
+		}
 		time.Sleep(5 * time.Minute)
 	}
+}
+
+func (w *Worker) checkRateLimitStatus() bool {
+	rateLimitQuery := rateLimitQuery{}
+	err := client.Query(w.ctx, &rateLimitQuery, nil)
+	rateLimitData := rateLimitQuery.RateLimit
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "couldn't check the rate limit usage"))
+		return true
+	}
+	fmt.Println(rateLimitData)
+	if rateLimitData.Remaining < 100 {
+		return true
+	}
+	return false
 }
 
 // Func to start repo topics polling
