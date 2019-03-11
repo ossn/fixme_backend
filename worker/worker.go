@@ -89,7 +89,8 @@ type (
 
 	rateLimitQuery struct {
 		RateLimit struct {
-			Remaining int `graphql:"remaining"`
+			Remaining int    `graphql:"remaining"`
+			ResetAt   string `graphql:"resetAt"`
 		} `graphql:"rateLimit"`
 	}
 )
@@ -126,28 +127,31 @@ func (w *Worker) startPolling(c <-chan os.Signal) {
 
 	// Start issue polling
 	for {
-		//TODO: Check github limits and run based on those
-		go w.getInitialIssues()
-		if w.checkRateLimitStatus() == true {
-			time.Sleep(time.Hour)
+		limitExceeded, resetAt := w.checkRateLimitStatus()
+		if limitExceeded {
+			time.Sleep(resetAt.Sub(time.Now()))
 		}
-		time.Sleep(5 * time.Minute)
+		w.getInitialIssues()
 	}
 }
 
-func (w *Worker) checkRateLimitStatus() bool {
+func (w *Worker) checkRateLimitStatus() (bool, time.Time) {
 	rateLimitQuery := rateLimitQuery{}
 	err := client.Query(w.ctx, &rateLimitQuery, nil)
-	rateLimitData := rateLimitQuery.RateLimit
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "couldn't check the rate limit usage"))
-		return true
+		return true, time.Time{}
 	}
-	fmt.Println(rateLimitData)
+	rateLimitData := rateLimitQuery.RateLimit
+	resetAt, err := time.Parse(time.RFC3339, rateLimitData.ResetAt)
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "couldn't check the rate limit usage"))
+		return true, time.Time{}
+	}
 	if rateLimitData.Remaining < 100 {
-		return true
+		return true, resetAt
 	}
-	return false
+	return false, time.Time{}
 }
 
 // Func to start repo topics polling
