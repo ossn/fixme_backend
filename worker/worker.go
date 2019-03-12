@@ -278,6 +278,10 @@ func (w *Worker) getInitialIssues() {
 	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name, hasPreviousPage)
 
 	if hasPreviousPage {
+		limitExceeded, resetAt, err := w.checkRateLimitStatus()
+		if limitExceeded && err == nil {
+			time.Sleep(resetAt.Sub(time.Now()))
+		}
 		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name)
 
 	}
@@ -298,6 +302,10 @@ func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, re
 	go w.parseAndSaveIssues(issueData, repository, language, hasPreviousPage)
 
 	if hasPreviousPage {
+		limitExceeded, resetAt, err := w.checkRateLimitStatus()
+		if limitExceeded && err == nil {
+			time.Sleep(resetAt.Sub(time.Now()))
+		}
 		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, repository, language)
 	}
 
