@@ -1,29 +1,60 @@
 package actions
 
-func (as *ActionSuite) Test_IssuesResource_List() {
-	as.Fail("Not Implemented!")
+import (
+	"encoding/json"
+	"math/rand"
+
+	"github.com/gobuffalo/uuid"
+
+	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/suite"
+	"github.com/ossn/fixme_backend/models"
+)
+
+type IssuesSuite struct {
+	*suite.Action
+	Issues *models.Issues
 }
 
-func (as *ActionSuite) Test_IssuesResource_Show() {
-	as.Fail("Not Implemented!")
+func (is *IssuesSuite) CreateIssue(issue models.Issue) {
+	is.NoError(is.DB.Create(issue))
 }
 
-func (as *ActionSuite) Test_IssuesResource_New() {
-	as.Fail("Not Implemented!")
+func (as *IssuesSuite) Test_IssuesResource_List() {
+	issue := models.Issue{
+		Title: nulls.String{"Test issue", true},
+	}
+	as.CreateIssue(issue)
+	res := as.JSON("/issues").Get()
+	as.Equal(200, res.Code)
+	as.Contains(res.Body.String(), issue.Title)
 }
 
-func (as *ActionSuite) Test_IssuesResource_Create() {
-	as.Fail("Not Implemented!")
+func (as *IssuesSuite) Test_IssuesResource_Show() {
+	idStr := "asdfasdfasdfasdf"
+	var id [16]byte
+	copy(id[:], []byte(idStr))
+	issue := models.Issue{
+		Title: nulls.String{"Test issue", true},
+		ID:    uuid.UUID(id),
+	}
+	as.CreateIssue(issue)
+	res := as.JSON("/issues/" + idStr).Get()
+	as.Equal(200, res.Code)
+	as.Contains(res.Body.String(), issue.Title)
 }
 
-func (as *ActionSuite) Test_IssuesResource_Edit() {
-	as.Fail("Not Implemented!")
-}
-
-func (as *ActionSuite) Test_IssuesResource_Update() {
-	as.Fail("Not Implemented!")
-}
-
-func (as *ActionSuite) Test_IssuesResource_Destroy() {
-	as.Fail("Not Implemented!")
+func (as *IssuesSuite) Test_IssuesResource_Count() {
+	issue := models.Issue{
+		Title: nulls.String{"Test issue", true},
+	}
+	randCount := rand.Intn(100)
+	for i := 0; i < randCount; i++ {
+		as.CreateIssue(issue)
+	}
+	res := as.JSON("/issues-count").Get()
+	var count int
+	as.NoError(json.Unmarshal(res.Body.Bytes(), &count))
+	as.Equal(200, res.Code)
+	as.Equal(randCount, count)
 }
