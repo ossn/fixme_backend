@@ -127,31 +127,31 @@ func (w *Worker) startPolling(c <-chan os.Signal) {
 
 	// Start issue polling
 	for {
-		limitExceeded, resetAt := w.checkRateLimitStatus()
-		if limitExceeded {
+		limitExceeded, resetAt, err := w.checkRateLimitStatus()
+		if limitExceeded && err == nil {
 			time.Sleep(resetAt.Sub(time.Now()))
 		}
 		w.getInitialIssues()
 	}
 }
 
-func (w *Worker) checkRateLimitStatus() (bool, time.Time) {
+func (w *Worker) checkRateLimitStatus() (bool, time.Time, error) {
 	rateLimitQuery := rateLimitQuery{}
 	err := client.Query(w.ctx, &rateLimitQuery, nil)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "couldn't check the rate limit usage"))
-		return true, time.Time{}
+		return true, time.Time{}, errors.WithMessage(err, "couldn't check the rate limit usage")
 	}
 	rateLimitData := rateLimitQuery.RateLimit
 	resetAt, err := time.Parse(time.RFC3339, rateLimitData.ResetAt)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "couldn't check the rate limit usage"))
-		return true, time.Time{}
+		return true, time.Time{}, errors.WithMessage(err, "couldn't check the rate limit usage")
 	}
 	if rateLimitData.Remaining < 100 {
-		return true, resetAt
+		return true, resetAt, nil
 	}
-	return false, time.Time{}
+	return false, time.Time{}, nil
 }
 
 // Func to start repo topics polling
