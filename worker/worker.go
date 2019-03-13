@@ -127,10 +127,6 @@ func (w *Worker) startPolling(c <-chan os.Signal) {
 
 	// Start issue polling
 	for {
-		limitExceeded, resetAt, err := w.checkRateLimitStatus()
-		if limitExceeded && err == nil {
-			time.Sleep(resetAt.Sub(time.Now()))
-		}
 		w.getInitialIssues()
 	}
 }
@@ -164,6 +160,7 @@ func (w *Worker) repositoryTopicsPolling() {
 
 // Get all the tags repositories and set them to the project
 func (w *Worker) UpdateRepositoryTopics() {
+	w.waitUntilLimitIsRefreshed()
 	repos := models.Repositories{}
 	err := models.DB.All(&repos)
 	if err != nil {
@@ -201,7 +198,10 @@ func (w *Worker) UpdateRepositoryTopics() {
 		}
 		repos[i] = repo
 	}
-	models.DB.ValidateAndUpdate(&repos)
+	verr, err := models.DB.ValidateAndUpdate(&repos)
+		if err != nil || verr.HasAny() {
+		fmt.Println(err, verr.Error())
+	}
 
 	projects := models.Projects{}
 	err = models.DB.All(&projects)
@@ -243,11 +243,29 @@ func (w *Worker) UpdateRepositoryTopics() {
 		projects[i] = project
 	}
 
-	models.DB.ValidateAndUpdate(&projects)
+	verr, err = models.DB.ValidateAndUpdate(&repos)
+		if err != nil || verr.HasAny() {
+		fmt.Println(err, verr.Error())
+	}
+}
+
+// waitUntilLimitIsRefreshed: A function that waits until the next github query can be executed
+func (w *Worker) waitUntilLimitIsRefreshed () {
+		limitExceeded, resetAt, err := w.checkRateLimitStatus()
+		if err != nil {
+			// if there is an issue retry in 5 minutes
+			time.Sleep(time.Minute*5)
+			w.waitUntilLimitIsRefreshed()
+		}
+		if limitExceeded {
+			time.Sleep(time.Until(resetAt))
+			w.waitUntilLimitIsRefreshed()
+		}
 }
 
 // Get first issues
 func (w *Worker) getInitialIssues() {
+	w.waitUntilLimitIsRefreshed()
 	lastUpdatedRepo := models.Repository{}
 	err := models.DB.Order("last_parsed asc").First(&lastUpdatedRepo)
 
@@ -278,10 +296,6 @@ func (w *Worker) getInitialIssues() {
 	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name, hasPreviousPage)
 
 	if hasPreviousPage {
-		limitExceeded, resetAt, err := w.checkRateLimitStatus()
-		if limitExceeded && err == nil {
-			time.Sleep(resetAt.Sub(time.Now()))
-		}
 		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name)
 
 	}
@@ -290,6 +304,7 @@ func (w *Worker) getInitialIssues() {
 
 // Get next page of issues
 func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, repository *models.Repository, language *string) {
+w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
 	err := client.Query(w.ctx, &issueData, variables)
@@ -302,10 +317,6 @@ func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, re
 	go w.parseAndSaveIssues(issueData, repository, language, hasPreviousPage)
 
 	if hasPreviousPage {
-		limitExceeded, resetAt, err := w.checkRateLimitStatus()
-		if limitExceeded && err == nil {
-			time.Sleep(resetAt.Sub(time.Now()))
-		}
 		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, repository, language)
 	}
 
