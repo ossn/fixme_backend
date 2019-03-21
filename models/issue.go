@@ -15,6 +15,7 @@ type Issue struct {
 	ID               uuid.UUID     `json:"id" db:"id"`
 	CreatedAt        time.Time     `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at" db:"updated_at"`
+	GithubUpdatedAt  time.time		 `json:"github_updated_at" db:"github_updated_at"`
 	Title            nulls.String  `json:"title" db:"title"`
 	ExperienceNeeded nulls.String  `json:"experience_needed" db:"experience_needed"`
 	ExpectedTime     nulls.String  `json:"expected_time" db:"expected_time"`
