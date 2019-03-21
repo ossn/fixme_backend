@@ -40,6 +40,7 @@ type (
 			Number     int
 			URL        string
 			CreatedAt  string
+			UpdatedAt  string
 			DatabaseID int
 			Labels     struct {
 				Nodes []struct {
@@ -331,6 +332,16 @@ func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, re
 
 }
 
+// Parse string to time.Time
+func timeConvert(GHUpdatedTime string) time.Time {
+	layout := "2006-01-02T15:04:05"
+	t, err := time.Parse(layout, GHUpdatedTime)
+	if err != nil {
+	    fmt.Println(err)
+	}
+	return t
+}
+
 // Parse and save github issues
 func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *models.Repository, language *string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
@@ -346,6 +357,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 			RepositoryID: repository.ID,
 			ProjectID:    repository.ProjectID,
 			Language:     nulls.String{String: strings.ToLower(*language), Valid: *language != ""},
+			GithubUpdatedAt: timeConvert(node.UpdatedAt),
 		}
 
 		// Parse github labels
