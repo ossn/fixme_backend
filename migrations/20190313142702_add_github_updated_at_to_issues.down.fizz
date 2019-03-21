@@ -1,0 +1,2 @@
+sql("ALTER TABLE public.issues
+REMOVE COLUMN github_updated_at timestamp without time zone")
