@@ -1,10 +1,13 @@
 package actions
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
+	"github.com/ossn/fixme_backend/cache"
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
 )
@@ -14,7 +17,7 @@ type IssuesResource struct {
 	buffalo.Resource
 }
 
-// List gets all Issues. This function is mapped to the path
+//ListOpen gets all Issues. This function is mapped to the path
 // GET /issues
 func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	// Get the DB connection from the context
@@ -23,8 +26,14 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 		return errors.WithStack(errors.New("no transaction found"))
 	}
 
+	//Getting connection form the pool of connections from the cache
+	cacheConn := cache.CachePool.Get()
+	defer cacheConn.Close()
+
+	// Retrieve all Issues from the DB
 	issues := &models.Issues{}
 	params := c.Params()
+
 	// Paginate results. Params "page" and "per_page" control pagination.
 	// Default values are "page=1" and "per_page=20".
 	q := tx.PaginateFromParams(params).Eager()
@@ -37,10 +46,38 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 			requestParamToQueryFilter(&whereClause, &param, &filter)
 		}
 	}
-	// Retrieve all Issues from the DB
-	if err := q.Where(whereClause).All(issues); err != nil {
-		return errors.WithStack(err)
+
+	page := params.Get("page")
+	redisKey := "issues:" + whereClause + "and page=" + page
+	ok, err := cache.Exists(&cacheConn, redisKey)
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+	} else {
+		if ok {
+			value, err := cache.GetString(&cacheConn, redisKey)
+			if err != nil {
+				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+				if err := q.Where(whereClause).All(issues); err != nil {
+					return errors.WithStack(err)
+				}
+			} else {
+				json.Unmarshal([]byte(value), issues)
+			}
+
+		} else {
+			if err := q.Where(whereClause).All(issues); err != nil {
+				return errors.WithStack(err)
+			}
+
+			jsonIssues, _ := json.Marshal(issues)
+			_, err := cache.SetEx(&cacheConn, redisKey, 600, string(jsonIssues))
+			if err != nil {
+				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+			}
+
+		}
 	}
+
 	c.Set("pagination", q.Paginator)
 
 	return c.Render(200, r.JSON(issues))
@@ -90,7 +127,7 @@ func (v IssuesResource) Show(c buffalo.Context) error {
 	return c.Render(200, r.JSON(issue))
 }
 
-// List gets all Issues. This function is mapped to the path
+//Count counts all Issues. This function is mapped to the path
 // GET /issues-count
 func (v IssuesResource) Count(c buffalo.Context) error {
 	// Get the DB connection from the context
@@ -98,6 +135,11 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 	if !ok {
 		return errors.WithStack(errors.New("no transaction found"))
 	}
+
+	var count int
+	//Getting connection form the pool of connections from the cache
+	cacheConn := cache.CachePool.Get()
+	defer cacheConn.Close()
 
 	issues := &models.Issues{}
 	params := c.Params()
@@ -111,10 +153,37 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 			requestParamToQueryFilter(&whereClause, &param, &filter)
 		}
 	}
-	count, err := q.Where(whereClause).Count(issues)
-	// Count Issues from the DB
+
+	page := params.Get("page")
+	redisKey := "issues-count:" + whereClause + "and page=" + page
+	ok, err := cache.Exists(&cacheConn, redisKey)
 	if err != nil {
-		return errors.WithStack(err)
+		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+	} else {
+		if ok {
+			count, err = cache.GetInt(&cacheConn, redisKey)
+
+			if err != nil {
+				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+				count, err = q.Where(whereClause).Count(issues)
+				// Count Issues from the DB
+				if err != nil {
+					return errors.WithStack(err)
+				}
+			}
+		} else {
+			count, err = q.Where(whereClause).Count(issues)
+			// Count Issues from the DB
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			_, err = cache.SetEx(&cacheConn, redisKey, 600, count)
+			if err != nil {
+				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+			}
+
+		}
 	}
 
 	return c.Render(200, r.JSON(count))

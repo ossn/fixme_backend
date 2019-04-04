@@ -34,6 +34,14 @@
   version = "v3.5.1"
 
 [[projects]]
+  digest = "1:2f7daa1bfbcd83e7f15933f01dd8306fe9a9b9d509d574f39bba9b0a67605b05"
+  name = "github.com/caarlos0/env"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9a320ffe30f788798714d91e5735181030db014c"
+  version = "v4.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:5a75ff130630f57609ffca00d6a76dc31bb50ad6a03809848e0f9e13add31987"
   name = "github.com/cockroachdb/cockroach-go"
@@ -98,7 +106,7 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:f52f93602fde279cd01e885f5bc0cc438f8a1d599590aca5227cbc745adcb21d"
+  digest = "1:253ef3ff7c35ac9799483146a29a080c8d374ce653db0f30f993bcf30c057c70"
   name = "github.com/gobuffalo/buffalo"
   packages = [
     ".",
@@ -108,8 +116,8 @@
     "worker",
   ]
   pruneopts = "UT"
-  revision = "4d7b03aa7e68260a1fc6f8b8cdf327b3f6511123"
-  version = "v0.12.8"
+  revision = "0a3fdfe3aa7699a0b757709f09ad928f5c6de912"
+  version = "v0.13.14"
 
 [[projects]]
   digest = "1:119549eb308e1417c2be6bdfa485ae07446a6c595a4db3d018e603e0b524c4b9"
@@ -351,11 +359,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e7b788a59820554cbf50c65d39849cec1fcc54f8c7eb56ccc75dd8853e79e658"
+  digest = "1:765aa82af227db3bc2badcf038e65200aa2995cbac59ce62b4b2edabdc80a6cf"
   name = "github.com/gobuffalo/x"
   packages = [
     "defaults",
     "httpx",
+    "randx",
     "sessions",
   ]
   pruneopts = "UT"
@@ -376,6 +385,17 @@
   pruneopts = "UT"
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:38ec74012390146c45af1f92d46e5382b50531247929ff3a685d2b2be65155ac"
+  name = "github.com/gomodule/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = "UT"
+  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
+  version = "v2.0.0"
 
 [[projects]]
   digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
@@ -830,6 +850,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/caarlos0/env",
     "github.com/dgrijalva/jwt-go",
     "github.com/gobuffalo/buffalo",
     "github.com/gobuffalo/buffalo-pop/pop/popmw",
@@ -848,6 +869,7 @@
     "github.com/gobuffalo/validate/validators",
     "github.com/gobuffalo/x/sessions",
     "github.com/gofrs/uuid",
+    "github.com/gomodule/redigo/redis",
     "github.com/markbates/grift/grift",
     "github.com/pkg/errors",
     "github.com/rs/cors",

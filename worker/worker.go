@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ossn/fixme_backend/cache"
 	"github.com/ossn/fixme_backend/models"
 
 	"github.com/gobuffalo/pop/nulls"
@@ -199,7 +200,7 @@ func (w *Worker) UpdateRepositoryTopics() {
 		repos[i] = repo
 	}
 	verr, err := models.DB.ValidateAndUpdate(&repos)
-		if err != nil || verr.HasAny() {
+	if err != nil || verr.HasAny() {
 		fmt.Println(err, verr.Error())
 	}
 
@@ -244,23 +245,23 @@ func (w *Worker) UpdateRepositoryTopics() {
 	}
 
 	verr, err = models.DB.ValidateAndUpdate(&repos)
-		if err != nil || verr.HasAny() {
+	if err != nil || verr.HasAny() {
 		fmt.Println(err, verr.Error())
 	}
 }
 
 // waitUntilLimitIsRefreshed: A function that waits until the next github query can be executed
-func (w *Worker) waitUntilLimitIsRefreshed () {
-		limitExceeded, resetAt, err := w.checkRateLimitStatus()
-		if err != nil {
-			// if there is an issue retry in 5 minutes
-			time.Sleep(time.Minute*5)
-			w.waitUntilLimitIsRefreshed()
-		}
-		if limitExceeded {
-			time.Sleep(time.Until(resetAt))
-			w.waitUntilLimitIsRefreshed()
-		}
+func (w *Worker) waitUntilLimitIsRefreshed() {
+	limitExceeded, resetAt, err := w.checkRateLimitStatus()
+	if err != nil {
+		// if there is an issue retry in 5 minutes
+		time.Sleep(time.Minute * 5)
+		w.waitUntilLimitIsRefreshed()
+	}
+	if limitExceeded {
+		time.Sleep(time.Until(resetAt))
+		w.waitUntilLimitIsRefreshed()
+	}
 }
 
 // Get first issues
@@ -304,7 +305,7 @@ func (w *Worker) getInitialIssues() {
 
 // Get next page of issues
 func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, repository *models.Repository, language *string) {
-w.waitUntilLimitIsRefreshed()
+	w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
 	err := client.Query(w.ctx, &issueData, variables)
@@ -400,6 +401,11 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "failed to update issues"))
 	}
+
+	cacheConn := cache.CachePool.Get()
+	defer cacheConn.Close()
+
+	cache.DeleteAllKeys(&cacheConn)
 
 	// Update repo record once all the github issues have been parsed
 	if !hasPreviousPage {
