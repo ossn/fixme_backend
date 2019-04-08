@@ -20,3 +20,8 @@ services:
       - 3000:3000
     links:
       - db:db
+  cache:
+    image: redis:5.0.4
+    ports:
+      - 6379:6379
+

@@ -26,3 +26,10 @@ services:
       JWT_SECRET: "ADD_A_JWT_SECRET"
     links:
       - db:db
+
+  cache:
+    image: redis:5.0.4
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+
