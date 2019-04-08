@@ -405,7 +405,8 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 	cacheConn := cache.CachePool.Get()
 	defer cacheConn.Close()
 
-	cache.DeleteAllKeys(&cacheConn)
+	cache.DeleteKeysByPattern(&cacheConn, "issues:*")
+	cache.DeleteKeysByPattern(&cacheConn, "issues-count:*")
 
 	// Update repo record once all the github issues have been parsed
 	if !hasPreviousPage {

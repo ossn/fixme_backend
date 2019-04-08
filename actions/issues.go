@@ -3,6 +3,8 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
@@ -48,13 +50,17 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	}
 
 	page := params.Get("page")
-	redisKey := "issues:" + whereClause + "and page=" + page
-	ok, err := cache.Exists(&cacheConn, redisKey)
+	cacheKey := "issues:" + whereClause + "and page=" + page
+
+	ok, err := cache.Exists(&cacheConn, cacheKey)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+		if err := q.Where(whereClause).All(issues); err != nil {
+			return errors.WithStack(err)
+		}
 	} else {
 		if ok {
-			value, err := cache.GetString(&cacheConn, redisKey)
+			value, err := cache.GetString(&cacheConn, cacheKey)
 			if err != nil {
 				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 				if err := q.Where(whereClause).All(issues); err != nil {
@@ -70,13 +76,16 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 			}
 
 			jsonIssues, _ := json.Marshal(issues)
-			_, err := cache.SetEx(&cacheConn, redisKey, 600, string(jsonIssues))
+			_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
 			if err != nil {
 				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 			}
 
 		}
 	}
+
+	//Caching issues of next page of the same query
+	go preCacheIssues(whereClause, params, page)
 
 	c.Set("pagination", q.Paginator)
 
@@ -155,13 +164,13 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 	}
 
 	page := params.Get("page")
-	redisKey := "issues-count:" + whereClause + "and page=" + page
-	ok, err := cache.Exists(&cacheConn, redisKey)
+	cacheKey := "issues-count:" + whereClause + "and page=" + page
+	ok, err := cache.Exists(&cacheConn, cacheKey)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 	} else {
 		if ok {
-			count, err = cache.GetInt(&cacheConn, redisKey)
+			count, err = cache.GetInt(&cacheConn, cacheKey)
 
 			if err != nil {
 				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
@@ -178,7 +187,7 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 				return errors.WithStack(err)
 			}
 
-			_, err = cache.SetEx(&cacheConn, redisKey, 600, count)
+			_, err = cache.SetEx(&cacheConn, cacheKey, 600, count)
 			if err != nil {
 				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 			}
@@ -215,6 +224,45 @@ func requestParamToQueryFilter(query, paramValue, paramName *string) {
 				*query += "'" + strings.TrimSpace(t) + "'"
 			}
 			*query += ")"
+		}
+	}
+}
+
+func preCacheIssues(whereClause string, params buffalo.ParamValues, page string) {
+	tx, err := models.DB.NewTransaction()
+	defer tx.Close()
+
+	if err != nil {
+		fmt.Println(errors.New("no transaction found"))
+	}
+
+	cacheConn := cache.CachePool.Get()
+	defer cacheConn.Close()
+
+	issues := &models.Issues{}
+	nextPage, _ := strconv.Atoi(page)
+	nextPage++
+	nextPageStr := strconv.Itoa(nextPage)
+	nextParams := params.(url.Values)
+	nextParams.Set("page", nextPageStr)
+	nextQ := tx.PaginateFromParams(nextParams).Eager()
+
+	nextCacheKey := "issues:" + whereClause + "and page=" + nextPageStr
+
+	ok, _ := cache.Exists(&cacheConn, nextCacheKey)
+
+	if ok == false {
+		if err := nextQ.Where(whereClause).All(issues); err != nil {
+			fmt.Println(errors.WithMessage(err, "DB Operation falied"))
+			fmt.Println(nextQ)
+			return
+		}
+
+		jsonIssues, _ := json.Marshal(issues)
+		_, err := cache.SetEx(&cacheConn, nextCacheKey, 600, string(jsonIssues))
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+			return
 		}
 	}
 }
