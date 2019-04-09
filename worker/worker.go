@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -402,11 +404,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 		fmt.Println(errors.WithMessage(err, "failed to update issues"))
 	}
 
-	cacheConn := cache.CachePool.Get()
-	defer cacheConn.Close()
-
-	cache.DeleteKeysByPattern(&cacheConn, "issues:*")
-	cache.DeleteKeysByPattern(&cacheConn, "issues-count:*")
+	deleteAndUpdateCache()
 
 	// Update repo record once all the github issues have been parsed
 	if !hasPreviousPage {
@@ -497,6 +495,47 @@ func (w *Worker) searchForDanglingIssues(repository *models.Repository) {
 	}
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "couldn't update issue"))
+	}
+}
+
+/* Deletes cache issues and issue-count cached data. Then cache the default issues of the issues landing page */
+func deleteAndUpdateCache() {
+	cacheConn := cache.CachePool.Get()
+	defer cacheConn.Close()
+
+	cache.DeleteKeysByPattern(&cacheConn, "issues:*")
+	cache.DeleteKeysByPattern(&cacheConn, "issues-count:*")
+
+	tx, err := models.DB.NewTransaction()
+	defer tx.Close()
+
+	if err != nil {
+		fmt.Println(errors.New("no transaction found"))
+		return
+	}
+
+	params := url.Values{}
+	issues := &models.Issues{}
+	defaultIssuesWhereClause := "issues:closed = false"
+	cacheKey := "issues:" + defaultIssuesWhereClause + "and page=1"
+	for _, filter := range []string{"language", "experience_needed", "type", "project_id", "ordering"} {
+		params.Set(filter, "undefined")
+	}
+	params.Set("page", "1")
+	q := tx.PaginateFromParams(params).Eager()
+	ok, _ := cache.Exists(&cacheConn, cacheKey)
+
+	if !ok {
+		if err := q.Where(defaultIssuesWhereClause).All(issues); err != nil {
+			fmt.Println(errors.WithMessage(err, "DB Operation falied"))
+			return
+		}
+
+		jsonIssues, _ := json.Marshal(issues)
+		_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+		}
 	}
 }
 

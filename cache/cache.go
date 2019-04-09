@@ -11,11 +11,11 @@ import (
 )
 
 type config struct {
-	Server      string        `env:"CACHE_SERVER" envDefault:"127.0.0.1:6379"`
-	MaxIdle     int           `env:"CACHE_MAX_IDLE" envDefault:"10"`
-	MaxActive   int           `env:"CACHE_MAX_ACTIVE" envDefault:"100"`
-	IdleTimeout time.Duration `env:"CACHE_IDLE_TIMEOUT" envDefault:"24s"`
-	Wait        bool          `env:"CACHE_WAIT" envDefault:"true"`
+	Server      string        `env:"REDIS_SERVER" envDefault:"127.0.0.1:6379"`
+	MaxIdle     int           `env:"REDIS_MAX_IDLE" envDefault:"10"`
+	MaxActive   int           `env:"REDIS_MAX_ACTIVE" envDefault:"100"`
+	IdleTimeout time.Duration `env:"REDIS_IDLE_TIMEOUT" envDefault:"24s"`
+	Wait        bool          `env:"REDIS_WAIT" envDefault:"true"`
 }
 
 /*CachePool maintains a pool of connections.The application calls the Get method to get
@@ -53,7 +53,6 @@ func SetEx(RConn *redis.Conn, key string, ttl int, data interface{}) (interface{
 
 //GetString returns the value for the key in string format
 func GetString(RConn *redis.Conn, key string) (string, error) {
-	//get
 	return redis.String((*RConn).Do("GET", key))
 }
 

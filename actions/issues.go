@@ -53,35 +53,27 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	cacheKey := "issues:" + whereClause + "and page=" + page
 
 	ok, err := cache.Exists(&cacheConn, cacheKey)
-	if err != nil {
-		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+	if err != nil || !ok {
+		//TODO: send error to a logger package which will ignore it if nil
 		if err := q.Where(whereClause).All(issues); err != nil {
 			return errors.WithStack(err)
 		}
+		jsonIssues, _ := json.Marshal(issues)
+		_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+		}
 	} else {
-		if ok {
-			value, err := cache.GetString(&cacheConn, cacheKey)
-			if err != nil {
-				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-				if err := q.Where(whereClause).All(issues); err != nil {
-					return errors.WithStack(err)
-				}
-			} else {
-				json.Unmarshal([]byte(value), issues)
-			}
-
-		} else {
+		value, err := cache.GetString(&cacheConn, cacheKey)
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 			if err := q.Where(whereClause).All(issues); err != nil {
 				return errors.WithStack(err)
 			}
-
-			jsonIssues, _ := json.Marshal(issues)
-			_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
-			if err != nil {
-				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-			}
-
+		} else {
+			json.Unmarshal([]byte(value), issues)
 		}
+
 	}
 
 	//Caching issues of next page of the same query
@@ -166,32 +158,27 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 	page := params.Get("page")
 	cacheKey := "issues-count:" + whereClause + "and page=" + page
 	ok, err := cache.Exists(&cacheConn, cacheKey)
-	if err != nil {
-		fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-	} else {
-		if ok {
-			count, err = cache.GetInt(&cacheConn, cacheKey)
+	if err != nil || !ok {
+		count, err = q.Where(whereClause).Count(issues)
+		// Count Issues from the DB
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
-			if err != nil {
-				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-				count, err = q.Where(whereClause).Count(issues)
-				// Count Issues from the DB
-				if err != nil {
-					return errors.WithStack(err)
-				}
-			}
-		} else {
+		_, err = cache.SetEx(&cacheConn, cacheKey, 600, count)
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+		}
+	} else {
+		count, err = cache.GetInt(&cacheConn, cacheKey)
+
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 			count, err = q.Where(whereClause).Count(issues)
 			// Count Issues from the DB
 			if err != nil {
 				return errors.WithStack(err)
 			}
-
-			_, err = cache.SetEx(&cacheConn, cacheKey, 600, count)
-			if err != nil {
-				fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-			}
-
 		}
 	}
 
@@ -251,10 +238,9 @@ func preCacheIssues(whereClause string, params buffalo.ParamValues, page string)
 
 	ok, _ := cache.Exists(&cacheConn, nextCacheKey)
 
-	if ok == false {
+	if !ok {
 		if err := nextQ.Where(whereClause).All(issues); err != nil {
 			fmt.Println(errors.WithMessage(err, "DB Operation falied"))
-			fmt.Println(nextQ)
 			return
 		}
 
