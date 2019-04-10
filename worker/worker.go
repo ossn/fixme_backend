@@ -531,8 +531,12 @@ func deleteAndUpdateCache() {
 			return
 		}
 
-		jsonIssues, _ := json.Marshal(issues)
-		_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
+		jsonIssues, err := json.Marshal(issues)
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+			return
+		}
+		_, err = cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
 		if err != nil {
 			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
 		}
