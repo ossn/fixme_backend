@@ -11,6 +11,7 @@ RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/gola
 
 # Build app
 COPY Gopkg.toml Gopkg.lock ./
+RUN go get -u github.com/golang/dep/cmd/dep
 RUN dep ensure -vendor-only
 
 COPY . .

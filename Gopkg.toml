@@ -70,12 +70,16 @@
   version = "1.5.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/shurcooL/githubv4"
+  branch = "master"
 
 [[constraint]]
+  name = "github.com/xanzy/go-gitlab"
   branch = "master"
+
+[[constraint]]
   name = "golang.org/x/oauth2"
+  branch = "master"
 
 [prune]
   go-tests = true

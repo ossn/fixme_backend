@@ -21,6 +21,7 @@ type Repository struct {
 	Issues        Issues        `json:"issues" db:"-" has_many:"issues"`
 	LastParsed    time.Time     `json:"-" db:"last_parsed"`
 	Tags          slices.String `json:"tags" db:"tags"`
+	IsGitHub			bool					`json:"is_github" db:"is_github"`
 }
 
 type Repositories []Repository

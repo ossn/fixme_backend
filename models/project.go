@@ -24,6 +24,7 @@ type Project struct {
 	SetupDuration nulls.String  `json:"setup_duration" db:"setup_duration"`
 	IssuesCount   int           `json:"issues_count" db:"issues_count"`
 	Tags          slices.String `json:"tags" db:"tags"`
+	IsGitHub			bool					`json:"is_github" db:"is_github"`
 }
 
 type Projects []Project

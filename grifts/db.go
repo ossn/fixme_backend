@@ -32,8 +32,10 @@ var repositories = models.Repositories{
 			Link:        "https://voice.mozilla.org/en",
 			Tags:        []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
 			IssuesCount: 33,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/mozilla/voice-web",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -46,8 +48,10 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "1'", Valid: true},
 			Tags:          []string{"javascript", "vr", "webvr", "threejs", "html", "oculus"},
 			IssuesCount:   238,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/aframevr/aframe/",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -60,8 +64,10 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "17'", Valid: true},
 			Tags:          []string{"javascript", "html", "mobile", "browser"},
 			IssuesCount:   238,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/mozilla-mobile/focus-android",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -74,6 +80,8 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "5'", Valid: true},
 			Tags:          []string{"nodejs", "npm", "react", "redux", "javascript"},
 			IssuesCount:   7,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/devtools-html/debugger.html",
+		IsGitHub:		 true,
 	}}

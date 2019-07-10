@@ -7,6 +7,7 @@ import (
 	"github.com/gobuffalo/pop"
 	"github.com/ossn/fixme_backend/models"
 	"github.com/ossn/fixme_backend/worker"
+	"github.com/ossn/fixme_backend/worker2"
 	"github.com/pkg/errors"
 )
 
@@ -99,6 +100,7 @@ func (v ProjectsResource) Create(c buffalo.Context) error {
 
 	// Force worker to update the topics
 	go worker.WorkerInst.UpdateRepositoryTopics()
+	go worker2.WorkerInst.UpdateRepositoryTopics()
 
 	repo := models.Repository{RepositoryUrl: project.Link, ProjectID: project.ID}
 	count, err := tx.Where("repository_url=?", project.Link).Count(&repo)
@@ -180,6 +182,7 @@ func (v ProjectsResource) Update(c buffalo.Context) error {
 
 	// Force worker to update topic list
 	go worker.WorkerInst.UpdateRepositoryTopics()
+	go worker2.WorkerInst.UpdateRepositoryTopics()
 
 	if oldProjectUrl != project.Link {
 		repo := models.Repository{}

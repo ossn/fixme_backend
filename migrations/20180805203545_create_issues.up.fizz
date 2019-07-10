@@ -5,7 +5,7 @@ create_table("issues") {
 	t.Column("expected_time", "string", {"null": true})
 	t.Column("language", "string", {"null": true})
 	t.Column("tech_stack", "string", {"null": true})
-	t.Column("github_id", "integer", {"unique": true})
+	t.Column("issue_id", "integer", {"unique": true})
 	t.Column("number", "integer", {})
 	t.Column("labels", "varchar[]", {"null": true})
 	t.Column("url", "text", {"unique": true})
