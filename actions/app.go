@@ -15,24 +15,24 @@ import (
 // ENV is used to help switch settings based on where the
 // application is being run. Default is "development".
 var ENV = envy.Get("GO_ENV", "development")
-var app *buffalo.App
+var app * buffalo.App
 
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
 // application.
-func App() *buffalo.App {
+func App() * buffalo.App {
 
 	if app == nil {
-		app = buffalo.New(buffalo.Options{
-			Env:          ENV,
-			SessionStore: sessions.Null{},
-			PreWares: []buffalo.PreWare{
-				cors.Default().Handler,
-			},
-			Prefix:      "/api",
-			SessionName: "_fixme_backend_session",
-		})
-		// Set the request content type to JSON
+		app = buffalo.New(buffalo.Options {
+				Env: ENV,
+				SessionStore: sessions.Null {},
+				PreWares: [] buffalo.PreWare {
+					cors.Default().Handler,
+				},
+				Prefix: "/api",
+				SessionName: "_fixme_backend_session",
+			})
+			// Set the request content type to JSON
 		app.Use(contenttype.Set("application/json"))
 
 		if ENV == "development" {
@@ -44,19 +44,17 @@ func App() *buffalo.App {
 		// Remove to disable this.
 		app.Use(popmw.Transaction(models.DB))
 
-		app.GET("/projects", ProjectsResource{}.List)
-		app.GET("/repositories", RepositoriesResource{}.List)
-		app.GET("/issues", IssuesResource{}.ListOpen)
-		app.GET("/issues-count", IssuesResource{}.Count)
-		app.POST("/login", AdminsResource{}.Login)
+		app.GET("/projects", ProjectsResource {}.List)
+		app.GET("/issues", IssuesResource {}.ListOpen)
+		app.GET("/issues-count", IssuesResource {}.Count)
+		app.POST("/login", AdminsResource {}.Login)
 
 		admin := app.Group("/admin")
-		admin.Use(tokenauth.New(tokenauth.Options{}))
+		admin.Use(tokenauth.New(tokenauth.Options {}))
 
-		admin.Resource("/projects", ProjectsResource{})
-		admin.Resource("/repositories", RepositoriesResource{})
-		admin.Resource("/issues", IssuesResource{})
-		admin.Resource("/users", AdminsResource{})
+		admin.Resource("/projects", ProjectsResource {})
+		admin.Resource("/issues", IssuesResource {})
+		admin.Resource("/users", AdminsResource {})
 	}
 	return app
 }

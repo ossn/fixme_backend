@@ -6,23 +6,21 @@ import (
 
 	"github.com/gobuffalo/uuid"
 
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/suite"
 	"github.com/ossn/fixme_backend/models"
 )
 
-type IssuesSuite struct {
-	*suite.Action
-	Issues *models.Issues
+type IssuesSuite struct { * suite.Action
+	Issues * models.Issues
 }
 
-func (is *IssuesSuite) CreateIssue(issue models.Issue) {
+func(is * IssuesSuite) CreateIssue(issue models.Issue) {
 	is.NoError(is.DB.Create(issue))
 }
 
-func (as *IssuesSuite) Test_IssuesResource_List() {
-	issue := models.Issue{
-		Title: nulls.String{"Test issue", true},
+func(as * IssuesSuite) Test_IssuesResource_List() {
+	issue := models.Issue {
+		Title: "Test issue",
 	}
 	as.CreateIssue(issue)
 	res := as.JSON("/issues").Get()
@@ -30,13 +28,13 @@ func (as *IssuesSuite) Test_IssuesResource_List() {
 	as.Contains(res.Body.String(), issue.Title)
 }
 
-func (as *IssuesSuite) Test_IssuesResource_Show() {
+func(as * IssuesSuite) Test_IssuesResource_Show() {
 	idStr := "asdfasdfasdfasdf"
-	var id [16]byte
-	copy(id[:], []byte(idStr))
-	issue := models.Issue{
-		Title: nulls.String{"Test issue", true},
-		ID:    uuid.UUID(id),
+	var id[16] byte
+	copy(id[: ], [] byte(idStr))
+	issue := models.Issue {
+		Title: "Test issue",
+		ID: uuid.UUID(id),
 	}
 	as.CreateIssue(issue)
 	res := as.JSON("/issues/" + idStr).Get()
@@ -44,17 +42,17 @@ func (as *IssuesSuite) Test_IssuesResource_Show() {
 	as.Contains(res.Body.String(), issue.Title)
 }
 
-func (as *IssuesSuite) Test_IssuesResource_Count() {
-	issue := models.Issue{
-		Title: nulls.String{"Test issue", true},
+func(as * IssuesSuite) Test_IssuesResource_Count() {
+	issue := models.Issue {
+		Title: "Test issue",
 	}
 	randCount := rand.Intn(100)
-	for i := 0; i < randCount; i++ {
+	for i := 0;i < randCount;i++{
 		as.CreateIssue(issue)
 	}
 	res := as.JSON("/issues-count").Get()
 	var count int
-	as.NoError(json.Unmarshal(res.Body.Bytes(), &count))
+	as.NoError(json.Unmarshal(res.Body.Bytes(), & count))
 	as.Equal(200, res.Code)
 	as.Equal(randCount, count)
 }

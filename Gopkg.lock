@@ -300,7 +300,6 @@
     "columns",
     "fix",
     "logging",
-    "nulls",
     "slices",
   ]
   pruneopts = "UT"
@@ -840,7 +839,6 @@
     "github.com/gobuffalo/mw-tokenauth",
     "github.com/gobuffalo/packr",
     "github.com/gobuffalo/pop",
-    "github.com/gobuffalo/pop/nulls",
     "github.com/gobuffalo/pop/slices",
     "github.com/gobuffalo/suite",
     "github.com/gobuffalo/uuid",

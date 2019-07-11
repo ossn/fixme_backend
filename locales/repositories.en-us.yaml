@@ -1,6 +1,0 @@
-- id: "repository.created.success"
-  translation: "Repository was successfully created."
-- id: "repository.updated.success"
-  translation: "Repository was successfully updated."
-- id: "repository.destroyed.success"
-  translation: "Repository was successfully destroyed."

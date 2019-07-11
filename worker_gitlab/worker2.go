@@ -1,4 +1,4 @@
-package worker2
+package worker_gitlab
 
 import (
 	"context"
@@ -7,10 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/ossn/fixme_backend/models"
-
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/pkg/errors"
 	"github.com/xanzy/go-gitlab"
 	//"golang.org/x/oauth2"
@@ -67,33 +64,29 @@ func (w *Worker) repositoryTopicsPolling() {
 // Get all the tags repositories and set them to the project
 func (w *Worker) UpdateRepositoryTopics() {
 	w.waitUntilLimitIsRefreshed()
-	repos := models.Repositories{}
-	err := models.DB.Where("is_github = ?", false).All(&repos)
+	projects := models.Projects{}
+	err := models.DB.Where("is_github = ?", false).All(&projects)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "failed to get repos"))
+		fmt.Println(errors.Wrap(err, "failed to get projects"))
 		return
 	}
-
-	// map ProjectID -> RepositoriesArray (One project can contain more than one repositories)
-	repoIndexMap := make(map[uuid.UUID][]int, len(repos))
-
-	for i, repo := range repos {
-		repoIndexMap[repo.ProjectID] = append(repoIndexMap[repo.ProjectID], i)
-
-		tags, _, err := client.Tags.ListTags(repo.ProjectID, nil)
+	for i, project := range projects {
+		tags, _, err := client.Tags.ListTags(project.ProjectID, nil)
 
 		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load repos from gitlab"))
+			fmt.Println(errors.Wrap(err, "couldn't load projects from gitlab"))
 			continue
 		}
 
-		repoTags := []string{}
+		projectTags := []string{}
 		for _, tag := range tags {
-			repoTags = append(repoTags, tag.Name)
+			projectTags = append(projectTags, tag.Name)
 		}
-		repo.Tags = cleanupArray(repoTags)
 
-		verr, err := repo.Validate(models.DB)
+		project.IsGitHub = false
+		project.Tags = projectTags
+
+		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
 			fmt.Println(verr.Error())
 			continue
@@ -102,58 +95,10 @@ func (w *Worker) UpdateRepositoryTopics() {
 			fmt.Println(errors.Wrap(err, "couldn't save repos from gitlab"))
 			continue
 		}
-		repos[i] = repo
-	}
-
-	verr, err := models.DB.ValidateAndUpdate(&repos)
-		if err != nil || verr.HasAny() {
-		fmt.Println(err, verr.Error())
-	}
-
-
-	projects := models.Projects{}
-	err = models.DB.Where("is_github = ?", false).All(&projects)
-	if err != nil {
-		fmt.Println(errors.Wrap(err, "failed to get repos"))
-		return
-	}
-
-	for i, project := range projects {
-		repoIDs, exists := repoIndexMap[project.ID]
-		projectRepos := models.Repositories{}
-		if !exists {
-			err = models.DB.Where("project_id = ?", project.ID).All(&projectRepos)
-			if err != nil {
-				fmt.Println(errors.Wrap(err, "failed to find repos"))
-				continue
-			}
-		} else {
-			for _, index := range repoIDs {
-				projectRepos = append(projectRepos, repos[index])
-			}
-		}
-
-		tags := []string{}
-		for _, repo := range projectRepos {
-			tags = append(tags, repo.Tags...)
-		}
-
-		tags = cleanupArray(tags)
-		project.Tags = tags
-
-		verr, err := project.Validate(models.DB)
-		if verr.HasAny() {
-			fmt.Println(verr.Error())
-			continue
-		}
-		if err != nil {
-			fmt.Println(errors.WithMessage(err, "failed to save project"))
-			continue
-		}
 		projects[i] = project
 	}
 
-	verr, err = models.DB.ValidateAndUpdate(&repos)
+	verr, err := models.DB.ValidateAndUpdate(&projects)
 		if err != nil || verr.HasAny() {
 		fmt.Println(err, verr.Error())
 	}
@@ -161,24 +106,22 @@ func (w *Worker) UpdateRepositoryTopics() {
 
 // waitUntilLimitIsRefreshed: A function that waits until the next github query can be executed
 func (w *Worker) waitUntilLimitIsRefreshed () {
-			time.Sleep(time.Second*30)	// we don't know the limits
-			w.waitUntilLimitIsRefreshed()
+			time.Sleep(time.Second*10)	// we don't know the limits
 }
 
 // Get first issues
 func (w *Worker) getInitialIssues() {
 	w.waitUntilLimitIsRefreshed()
-	lastUpdatedRepo := models.Repository{}
-	err := models.DB.Order("last_parsed asc").First(&lastUpdatedRepo)
+	lastUpdatedProject := models.Project{}
+	err := models.DB.Where("is_github = ?", false).Order("last_parsed asc").First(&lastUpdatedProject)
 
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "failed to get issues"))
 		return
 	}
 
-
 	//Find primary language
-	languages, _, err := client.Projects.GetProjectLanguages(lastUpdatedRepo.ProjectID, nil)
+	languages, _, err := client.Projects.GetProjectLanguages(lastUpdatedProject.ProjectID, nil)
 
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "couldn't find language"))
@@ -188,10 +131,10 @@ func (w *Worker) getInitialIssues() {
 	var max float32 = -1.0
 	var primaryLanguage = ""
 
-	for language, pososto := range *languages {
-		if(pososto > max) {
+	for language, percentage := range *languages {
+		if(percentage > max) {
 			primaryLanguage = language
-			max = pososto
+			max = percentage
 		}
 	}
 
@@ -201,7 +144,7 @@ func (w *Worker) getInitialIssues() {
 		State: &openState,
 	}
 
-	issueData, response, err := client.Issues.ListProjectIssues(lastUpdatedRepo.ProjectID, issuesOptions)
+	issueData, response, err := client.Issues.ListProjectIssues(lastUpdatedProject.ProjectID, issuesOptions)
 
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "couldn't load initial issues"))
@@ -210,33 +153,32 @@ func (w *Worker) getInitialIssues() {
 
 	// full pages (20) of issues
 	for len(issueData) == 20 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedRepo, &primaryLanguage)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, &primaryLanguage, true)
 		issuesOptions.ListOptions.Page = response.NextPage
-		issueData, response, err = client.Issues.ListProjectIssues(lastUpdatedRepo.ProjectID, issuesOptions)
+		issueData, response, err = client.Issues.ListProjectIssues(lastUpdatedProject.ProjectID, issuesOptions)
 	}
 
 	// last page of issues
 	if len(issueData) > 0 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedRepo, &primaryLanguage)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, &primaryLanguage, false)
 	}
 }
 
 
 // Parse and save gitlab issues
-func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, repository *models.Repository, language *string) {
+func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, language *string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData {
 		gitlabIssue := &models.Issue{
 			IssueID:      node.ID,
-			Body:         nulls.String{String: node.Description, Valid: node.Description != ""},
-			Title:        nulls.String{String: node.Title, Valid: node.Title != ""},
+			Body:         node.Description,
+			Title:        node.Title,
 			Closed:       node.State == "closed",
 			Number:       node.IID,
 			URL:          node.WebURL,
-			RepositoryID: repository.ID,
-			ProjectID:    repository.ProjectID,
-			Language:     nulls.String{String: strings.ToLower(*language), Valid: *language != ""},
+			ProjectID:    project.ID,
+			Language:     strings.ToLower(*language),
 		}
 
 		// Parse gitlab labels
@@ -255,16 +197,14 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, repository *model
 				}
 			}
 		}
-
+		gitlabIssue.IsGitHub = false
 		gitlabIssue.Labels = labels
-		// Initialize experience needed with moderate
-		if !gitlabIssue.ExperienceNeeded.Valid {
-			gitlabIssue.ExperienceNeeded = nulls.String{String: "moderate", Valid: true}
-		}
+		// Initialize experience needed with moderate - to be fixed!
+		gitlabIssue.ExperienceNeeded = "moderate"
 
 		// Allocate empty issue if there is no issue with the same id
 		dbIssue := models.Issue{}
-		if err := models.DB.Where("issue_id = ?", node.ID).First(&dbIssue); err != nil {
+		if err := models.DB.Where("is_github = ? and issue_id = ?", "false", node.ID).First(&dbIssue); err != nil {
 			verrs, err := gitlabIssue.Validate(models.DB)
 			if verrs.HasAny() {
 				fmt.Println(verrs.Error())
@@ -303,67 +243,44 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, repository *model
 		fmt.Println(errors.WithMessage(err, "failed to update issues"))
 	}
 
-	w.updateProjectOnFinish(repository)
+	// Update repo record once all the github issues have been parsed
+	if !hasPreviousPage {
+		w.updateProjectOnFinish(project)
+	}
 }
 
 
 // Update project info when issues have been updated
-func (w *Worker) updateProjectOnFinish(repository *models.Repository) {
-	go w.searchForDanglingIssues(repository)
+func (w *Worker) updateProjectOnFinish(project *models.Project) {
+	go w.searchForDanglingIssues(project)
 	var err error
 
-	repository.IssueCount, err = models.DB.Where("closed=false and repository_id=?", repository.ID).Count(&models.Issue{})
+	project.IssuesCount, err = models.DB.Where("closed = ? and project_id = ?", "false", project.ID).Count(&models.Issue{})
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Failed to count"))
 	}
 
-	repository.LastParsed = time.Now()
-	verr, err := models.DB.ValidateAndUpdate(repository)
+	project.LastParsed = time.Now()
+	verr, err := models.DB.ValidateAndUpdate(project)
 	if verr.HasAny() {
 		fmt.Println(verr.Error())
 	}
 	if err != nil {
-		fmt.Println(errors.WithMessage(err, "failed update last parsed repo"))
+		fmt.Println(errors.WithMessage(err, "failed update last parsed project"))
 	}
-
-	repos := &models.Repositories{}
-	if err = models.DB.Where("project_id=?", repository.ProjectID).All(repos); err != nil {
-		fmt.Println(errors.WithMessage(err, "Failed to find repos"))
-	}
-
-	count := 0
-	for _, repo := range *repos {
-		count += repo.IssueCount
-	}
-
-	project := &models.Project{}
-	if err = models.DB.Find(project, repository.ProjectID); err != nil {
-		fmt.Println(errors.WithMessage(err, "Failed to find project"))
-	}
-
-	project.IssuesCount = count
-	verr, err = models.DB.ValidateAndUpdate(project)
-	if verr.HasAny() {
-		fmt.Println(verr.Error())
-	}
-	if err != nil {
-		fmt.Println(errors.WithMessage(err, "Failed to update project"))
-	}
-
-	project.IsGitHub = false;
 }
 
 // Cleanup project issues that have been closed or couldn't be found in the repo
-func (w *Worker) searchForDanglingIssues(repository *models.Repository) {
+func (w *Worker) searchForDanglingIssues(project *models.Project) {
 	issues := models.Issues{}
-	err := models.DB.Where("updated_at < current_timestamp - interval '6 minutes' and closed = false and project_id = ?", repository.ProjectID).All(&issues)
+	err := models.DB.Where("updated_at < current_timestamp - interval '6 minutes' and closed = false and project_id = ?", project.ID).All(&issues)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Failed to find unclosed issues"))
 		return
 	}
 	issuesToClose := models.Issues{}
 	for _, issue := range issues {
-		issueData, _, err := client.Issues.GetIssue(repository.ProjectID, issue.Number, nil)
+		issueData, _, err := client.Issues.GetIssue(project.ProjectID, issue.Number, nil)
 
 		// This might close an issue if there is a network error
 		// but it's better to close an issue and reopen it later rather than leaving dangling issues

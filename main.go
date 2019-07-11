@@ -7,8 +7,8 @@ import (
 	"os/signal"
 
 	"github.com/ossn/fixme_backend/actions"
-	"github.com/ossn/fixme_backend/worker"
-	"github.com/ossn/fixme_backend/worker2"
+	"github.com/ossn/fixme_backend/worker_github"
+	"github.com/ossn/fixme_backend/worker_gitlab"
 )
 
 // main is the starting point to your Buffalo application.
@@ -35,9 +35,9 @@ func main() {
 		}
 	}()
 
-	// Start worker
-	go worker.WorkerInst.Init(ctx, c)
-	go worker2.WorkerInst.Init(ctx, c)
+	// Start workers
+	go worker_github.WorkerInst.Init(ctx, c)
+	go worker_gitlab.WorkerInst.Init(ctx, c)
 
 
 	// Start app serve

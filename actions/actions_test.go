@@ -7,13 +7,13 @@ import (
 )
 
 type ActionSuite struct {
-	*suite.Action
+	* suite.Action
 }
 
-func Test_ActionSuite(t *testing.T) {
+func Test_ActionSuite(t * testing.T) {
 	action := suite.NewAction(App())
 
-	as := &ActionSuite{
+		as := & ActionSuite {
 		Action: action,
 	}
 	suite.Run(t, as)
