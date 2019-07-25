@@ -12,8 +12,6 @@ import (
 
 // main is the starting point to your Buffalo application.
 func main() {
-	app := actions.App()
-
 	ctx := context.Background()
 
 	// trap Ctrl+C and call cancel on the context
@@ -37,6 +35,7 @@ func main() {
 	// Start worker
 	go worker.WorkerInst.Init(ctx, c)
 
+	app := actions.App(ctx)
 	// Start app serve
 	if err := app.Serve(); err != nil {
 		log.Fatal(err)

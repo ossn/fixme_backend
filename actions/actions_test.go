@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gobuffalo/suite"
@@ -11,7 +12,7 @@ type ActionSuite struct {
 }
 
 func Test_ActionSuite(t *testing.T) {
-	action := suite.NewAction(App())
+	action := suite.NewAction(App(context.TODO()))
 
 	as := &ActionSuite{
 		Action: action,

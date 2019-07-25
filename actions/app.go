@@ -1,8 +1,10 @@
 package actions
 
 import (
+	"context"
+
 	"github.com/gobuffalo/buffalo"
-	popmw "github.com/gobuffalo/buffalo-pop/pop/popmw"
+	"github.com/gobuffalo/buffalo-pop/pop/popmw"
 	"github.com/gobuffalo/envy"
 	contenttype "github.com/gobuffalo/mw-contenttype"
 	paramlogger "github.com/gobuffalo/mw-paramlogger"
@@ -20,10 +22,12 @@ var app *buffalo.App
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
 // application.
-func App() *buffalo.App {
+func App(ctx context.Context) *buffalo.App {
 
 	if app == nil {
 		app = buffalo.New(buffalo.Options{
+			WorkerOff:    true,
+			Context:      ctx,
 			Env:          ENV,
 			SessionStore: sessions.Null{},
 			PreWares: []buffalo.PreWare{
@@ -32,15 +36,17 @@ func App() *buffalo.App {
 			Prefix:      "/api",
 			SessionName: "_fixme_backend_session",
 		})
-		// Set the request content type to JSON
-		app.Use(contenttype.Set("application/json"))
 
 		if ENV == "development" {
+			// Log request parameters (filters apply).
 			app.Use(paramlogger.ParameterLogger)
 		}
 
+		// Set the request content type to JSON
+		app.Use(contenttype.Set("application/json"))
+
 		// Wraps each request in a transaction.
-		//  c.Value("tx").(*pop.PopTransaction)
+		//  c.Value("tx").(*pop.Connection)
 		// Remove to disable this.
 		app.Use(popmw.Transaction(models.DB))
 

@@ -1,7 +1,7 @@
 package grifts
 
 import (
-	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/nulls"
 	"github.com/markbates/grift/grift"
 	"github.com/ossn/fixme_backend/models"
 )
@@ -24,14 +24,15 @@ var _ = grift.Namespace("db", func() {
 var repositories = models.Repositories{
 	{
 		Project: models.Project{
-			DisplayName: "Common Voice",
-			FirstColor:  "#ABDEF5",
-			SecondColor: nulls.String{String: "#CDCFEE", Valid: true},
-			Description: "The Common Voice project is Mozilla’s initiative to help teach machines how real people speak.\nVoice is natural, voice is human. That’s why we’re fascinated with creating usable voice technology for our machines. But to create voice systems, an extremely large amount of voice data is required.\n\nMost of the data used by large companies isn’t available to the majority of people. We think that stifles innovation. So we’ve launched Project Common Voice, a project to help make voice recognition open to everyone.",
-			Logo:        "https://voice.mozilla.org/img/cv-logo-bw.svg",
-			Link:        "https://voice.mozilla.org/en",
-			Tags:        []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
-			IssuesCount: 33,
+			DisplayName:   "Common Voice",
+			FirstColor:    "#ABDEF5",
+			SecondColor:   nulls.String{String: "#CDCFEE", Valid: true},
+			Description:   "The Common Voice project is Mozilla’s initiative to help teach machines how real people speak.\nVoice is natural, voice is human. That’s why we’re fascinated with creating usable voice technology for our machines. But to create voice systems, an extremely large amount of voice data is required.\n\nMost of the data used by large companies isn’t available to the majority of people. We think that stifles innovation. So we’ve launched Project Common Voice, a project to help make voice recognition open to everyone.",
+			SetupDuration: nulls.String{String: "1'", Valid: false},
+			Logo:          "https://voice.mozilla.org/img/cv-logo-bw.svg",
+			Link:          "https://voice.mozilla.org/en",
+			Tags:          []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
+			IssuesCount:   33,
 		},
 		RepositoryUrl: "https://github.com/mozilla/voice-web",
 	},
