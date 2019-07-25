@@ -7,7 +7,6 @@ import (
 
 	"github.com/caarlos0/env"
 	"github.com/gomodule/redigo/redis"
-	"github.com/pkg/errors"
 )
 
 type config struct {
@@ -72,8 +71,10 @@ func Exists(RConn *redis.Conn, key string) (bool, error) {
 }
 
 //DeleteAllKeys deletes all keys from the current database
-func DeleteAllKeys(RConn *redis.Conn) {
-	(*RConn).Do("FLUSHDB")
+func DeleteAllKeys(RConn *redis.Conn) error {
+	_, err := (*RConn).Do("FLUSHDB")
+	return err
+
 }
 
 // DeleteKey deletes a key given the key name
@@ -93,30 +94,25 @@ func DeleteKeysByPattern(RConn *redis.Conn, pattern string) {
 	for {
 		values, err := redis.Values((*RConn).Do("SCAN", cursor, "MATCH", pattern, "COUNT", 100))
 		if err != nil {
-			log.Fatalln(err)
+			fmt.Println("cache:", err)
+			return
 		}
 
-		values, err = redis.Scan(values, &cursor, &items)
+		_, err = redis.Scan(values, &cursor, &items)
 		if err != nil {
-			return
+			continue
 		}
 
 		for _, item := range items {
 			ttl, _ := redis.Int((*RConn).Do("TTL", item))
 			if time.Now().Add(-time.Duration(600-ttl) * time.Second).Before(start) {
-				(*RConn).Send("UNLINK", item)
+				err = (*RConn).Send("UNLINK", item)
+				if err != nil {
+					log.Println("cache:", err)
+				}
 				noOfKeysToDel++
 			}
 
-		}
-
-		if noOfKeysToDel <= 100 {
-			_, err := (*RConn).Do("EXEC")
-			if err != nil {
-				fmt.Println(errors.WithMessage(err, "Error while deleteing keys"))
-			} else {
-				noOfKeysToDel = 0
-			}
 		}
 
 		if cursor == 0 {
