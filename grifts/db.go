@@ -76,5 +76,5 @@ var repositories = models.Repositories{
 			Tags:          []string{"nodejs", "npm", "react", "redux", "javascript"},
 			IssuesCount:   7,
 		},
-		RepositoryUrl: "https://github.com/devtools-html/debugger.html",
+		RepositoryUrl: "https://github.com/firefox-devtools/debugger",
 	}}
