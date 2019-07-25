@@ -3,6 +3,7 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -19,7 +20,7 @@ type IssuesResource struct {
 	buffalo.Resource
 }
 
-//ListOpen gets all Issues. This function is mapped to the path
+// ListOpen gets all Issues. This function is mapped to the path
 // GET /issues
 func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	// Get the DB connection from the context
@@ -28,7 +29,7 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 		return errors.WithStack(errors.New("no transaction found"))
 	}
 
-	//Getting connection form the pool of connections from the cache
+	// Getting connection form the pool of connections from the cache
 	cacheConn := cache.CachePool.Get()
 	defer cacheConn.Close()
 
@@ -53,30 +54,37 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 	cacheKey := "issues:" + whereClause + "and page=" + page
 
 	ok, err := cache.Exists(&cacheConn, cacheKey)
-	if err != nil || !ok {
+
+	if err == nil && ok {
+		value, err := cache.GetString(&cacheConn, cacheKey)
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "Cache get operation failed"))
+		} else {
+			err = json.Unmarshal([]byte(value), issues)
+			if err != nil {
+				fmt.Println(errors.WithMessage(err, "Cache unmarshal operation failed"))
+				issues = &models.Issues{}
+			}
+		}
+	}
+
+	if len(*issues) < 1 {
 		//TODO: send error to a logger package which will ignore it if nil
 		if err := q.Where(whereClause).All(issues); err != nil {
 			return errors.WithStack(err)
 		}
-		jsonIssues, _ := json.Marshal(issues)
-		_, err := cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
+		jsonIssues, err := json.Marshal(issues)
 		if err != nil {
-			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
+			fmt.Println(errors.WithMessage(err, "Json marshal operation failed"))
+			return c.Error(http.StatusInternalServerError, fmt.Errorf("There was an error retrieving the issues"))
 		}
-	} else {
-		value, err := cache.GetString(&cacheConn, cacheKey)
+		_, err = cache.SetEx(&cacheConn, cacheKey, 600, string(jsonIssues))
 		if err != nil {
-			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-			if err := q.Where(whereClause).All(issues); err != nil {
-				return errors.WithStack(err)
-			}
-		} else {
-			json.Unmarshal([]byte(value), issues)
+			fmt.Println(errors.WithMessage(err, "Cache set operation failed"))
 		}
-
 	}
 
-	//Caching issues of next page of the same query
+	// Caching issues of next page of the same query
 	go preCacheIssues(whereClause, params, page)
 
 	c.Set("pagination", q.Paginator)
@@ -128,7 +136,7 @@ func (v IssuesResource) Show(c buffalo.Context) error {
 	return c.Render(200, r.JSON(issue))
 }
 
-//Count counts all Issues. This function is mapped to the path
+// Count counts all Issues. This function is mapped to the path
 // GET /issues-count
 func (v IssuesResource) Count(c buffalo.Context) error {
 	// Get the DB connection from the context
@@ -216,39 +224,45 @@ func requestParamToQueryFilter(query, paramValue, paramName *string) {
 }
 
 func preCacheIssues(whereClause string, params buffalo.ParamValues, page string) {
-	tx, err := models.DB.NewTransaction()
-	defer tx.Close()
-
-	if err != nil {
-		fmt.Println(errors.New("no transaction found"))
-	}
-
 	cacheConn := cache.CachePool.Get()
 	defer cacheConn.Close()
 
 	issues := &models.Issues{}
-	nextPage, _ := strconv.Atoi(page)
+	nextPage, err := strconv.Atoi(page)
+	if err != nil {
+		nextPage = 1
+		fmt.Println(errors.WithMessage(err, "preCacheIssues: Failed to parse page"))
+	}
 	nextPage++
 	nextPageStr := strconv.Itoa(nextPage)
 	nextParams := params.(url.Values)
 	nextParams.Set("page", nextPageStr)
-	nextQ := tx.PaginateFromParams(nextParams).Eager()
+	nextQ := models.DB.PaginateFromParams(nextParams).Eager()
 
 	nextCacheKey := "issues:" + whereClause + "and page=" + nextPageStr
 
-	ok, _ := cache.Exists(&cacheConn, nextCacheKey)
+	ok, err := cache.Exists(&cacheConn, nextCacheKey)
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "preCacheIssues: Cache operation failed"))
+		return
+	}
 
-	if !ok {
-		if err := nextQ.Where(whereClause).All(issues); err != nil {
-			fmt.Println(errors.WithMessage(err, "DB Operation falied"))
-			return
-		}
+	if ok {
+		return
+	}
 
-		jsonIssues, _ := json.Marshal(issues)
-		_, err := cache.SetEx(&cacheConn, nextCacheKey, 600, string(jsonIssues))
-		if err != nil {
-			fmt.Println(errors.WithMessage(err, "Cache operation failed"))
-			return
-		}
+	if err := nextQ.Where(whereClause).All(issues); err != nil {
+		fmt.Println(errors.WithMessage(err, "preCacheIssues: DB Operation falied"))
+		return
+	}
+
+	jsonIssues, err := json.Marshal(issues)
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "preCacheIssues: Cache marshal operation failed"))
+		return
+	}
+	_, err = cache.SetEx(&cacheConn, nextCacheKey, 600, string(jsonIssues))
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "preCacheIssues: Cache operation failed"))
 	}
 }
