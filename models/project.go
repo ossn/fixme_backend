@@ -3,8 +3,8 @@ package models
 import (
 	"time"
 
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop"
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"

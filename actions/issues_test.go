@@ -6,7 +6,7 @@ import (
 
 	"github.com/gobuffalo/uuid"
 
-	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/suite"
 	"github.com/ossn/fixme_backend/models"
 )

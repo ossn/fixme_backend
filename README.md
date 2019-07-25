@@ -27,12 +27,10 @@
 
 - [Postgresql](https://www.postgresql.org/download/)
 - [Go](https://golang.org/doc/install)
-- [Dep](https://github.com/golang/dep#installation)
 - [Buffalo](https://gobuffalo.io/en/docs/installation)
 
 #### Starting the app
 
-- Run `dep ensure`
 - Configure `database.yml` file in order to connect the app to your PostgreSQL instance
 - Generate a github token, there is a guide [here](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
 - Set your github token to an environment variable called `GITHUB_TOKEN`

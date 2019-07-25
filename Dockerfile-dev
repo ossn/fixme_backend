@@ -1,17 +1,12 @@
-FROM gobuffalo/buffalo:v0.13.3
+FROM gobuffalo/buffalo:v0.14.6
 
-RUN apt update && apt install -y git ssh jq curl ca-certificates
+RUN apt update && apt install -y git ssh ca-certificates
 RUN mkdir -p /go/src/github.com/ossn/fixme_backend
 WORKDIR /go/src/github.com/ossn/fixme_backend
-RUN mkdir ~/.ssh && \
-  ssh-keyscan -t rsa github.com > ~/.ssh/known_hosts
-
-# Install dep
-RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/golang/dep/releases/latest | jq -r ".assets[] | select(.name | test(\"dep-linux-amd64\")) |.browser_download_url") && chmod +x /usr/local/bin/dep
+RUN mkdir ~/.ssh && ssh-keyscan -t rsa github.com >~/.ssh/known_hosts
 
 # Build app
-COPY Gopkg.toml Gopkg.lock ./
-RUN dep ensure -vendor-only
 ENV ADDR=0.0.0.0
+ENV GO111MODULE=on
 COPY . .
 CMD buffalo db migrate; buffalo task db:seed; buffalo dev

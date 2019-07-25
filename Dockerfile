@@ -1,23 +1,15 @@
-FROM gobuffalo/buffalo:v0.13.3 as builder
+FROM gobuffalo/buffalo:v0.14.6 as builder
 
-RUN apt update && apt install -y git ssh jq curl ca-certificates
+RUN apt update && apt install -y git ssh ca-certificates
 RUN mkdir -p /go/src/github.com/ossn/fixme_backend
 WORKDIR /go/src/github.com/ossn/fixme_backend
-RUN mkdir ~/.ssh && \
-  ssh-keyscan -t rsa github.com > ~/.ssh/known_hosts
-
-# Install dep
-RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/golang/dep/releases/latest | jq -r ".assets[] | select(.name | test(\"dep-linux-amd64\")) |.browser_download_url") && chmod +x /usr/local/bin/dep
-
-# Build app
-COPY Gopkg.toml Gopkg.lock ./
-RUN dep ensure -vendor-only
+RUN mkdir ~/.ssh && ssh-keyscan -t rsa github.com >~/.ssh/known_hosts
 
 COPY . .
-RUN buffalo build --static -o /bin/app
+RUN GO111MODULE=on buffalo build --environment=production --static -o /bin/app
 
 FROM alpine
-RUN apk add --no-cache bash ca-certificates
+RUN apk add --no-cache bash ca-certificates curl
 
 WORKDIR /bin/
 
