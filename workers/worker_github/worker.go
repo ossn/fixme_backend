@@ -76,13 +76,14 @@ func (w *Worker) checkRateLimitStatus() (bool, time.Time, error) {
 
 // Func to start repo topics polling
 func (w *Worker) repositoryTopicsPolling() {
+	create_technologies_map()
 	for {
 		go w.UpdateRepositoryTopics()
 		time.Sleep(1 * time.Hour)
 	}
 }
 
-// Get all the tags repositories and set them to the project
+// Get all the topics repositories and set them to the project
 func (w *Worker) UpdateRepositoryTopics() {
 	w.waitUntilLimitIsRefreshed()
 	projects := models.Projects{}
@@ -99,20 +100,38 @@ func (w *Worker) UpdateRepositoryTopics() {
 			continue
 		}
 
-		tags := tagsQuery{}
-		err = client.Query(w.ctx, &tags, map[string]interface{}{"name": name, "owner": owner})
+		projectInfo := repoQuery{}
+		err = client.Query(w.ctx, &projectInfo, map[string]interface{}{"name": name, "owner": owner})
 		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
+			fmt.Println(errors.Wrap(err, "couldn't load repo's info from github"))
 			continue
 		}
 
-		projectTags := []string{}
-		for _, tag := range tags.Repository.RepositoryTopics.Nodes {
-			projectTags = append(projectTags, tag.Topic.Name)
+
+		description := stringToWords(projectInfo.Repository.Description)
+		filteredTechnologies := searchForMatchingTechnologies(description)
+
+		readme := stringToWords(projectInfo.Repository.Object.Blob.Text)
+		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
+
+		topics := []string{}
+		for _, topic := range projectInfo.Repository.RepositoryTopics.Nodes {
+			topics = append(topics, topic.Topic.Name)
+		}
+		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(topics)...)
+
+		fmt.Println(cleanupArray(filteredTechnologies))
+		project.IsGitHub = true
+		project.Tags = cleanupArray(filteredTechnologies)
+		//fmt.Println(project.Tags)
+
+		projectLanguages := []string{}
+		for _, language := range projectInfo.Repository.Languages.Nodes {
+			projectLanguages = append(projectLanguages, language.Name)
 		}
 
-		project.IsGitHub = true
-		project.Tags = projectTags
+		project.Languages = projectLanguages
+
 
 		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
@@ -169,23 +188,17 @@ func (w *Worker) getInitialIssues() {
 		return
 	}
 
-	languageRequest := language{}
-	err = client.Query(w.ctx, &languageRequest, variables)
-	if err != nil {
-		fmt.Println(errors.WithMessage(err, "couldn't find language"))
-		return
-	}
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, &languageRequest.Repository.PrimaryLanguage.Name, hasPreviousPage)
+	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, lastUpdatedProject.Languages, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject, &languageRequest.Repository.PrimaryLanguage.Name)
+		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject, lastUpdatedProject.Languages)
 	}
 
 }
 
 // Get next page of issues
-func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, language *string) {
+func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, languages []string) {
 w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
@@ -196,16 +209,16 @@ w.waitUntilLimitIsRefreshed()
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueData, project, language, hasPreviousPage)
+	go w.parseAndSaveIssues(issueData, project, languages, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project, language)
+		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project, languages)
 	}
 
 }
 
 // Parse and save github issues
-func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, language *string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, languages []string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData.Repository.Issues.Nodes {
@@ -217,7 +230,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 			Number:       node.Number,
 			URL:          node.URL,
 			ProjectID:    project.ID,
-			Language:     strings.ToLower(*language),
+			Languages:    languages,
 		}
 
 		// Parse github labels

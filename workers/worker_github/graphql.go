@@ -8,6 +8,7 @@ type (
 		StartCursor     string
 		HasPreviousPage bool
 	}
+
 	Issues struct {
 		Nodes []struct {
 			Title      string
@@ -26,11 +27,26 @@ type (
 		PageInfo PageInfo
 	}
 
-	language struct {
+	repoQuery struct {
 		Repository struct {
-			PrimaryLanguage struct {
-				Name string
-			}
+			Object struct {
+				Blob struct {
+					Text string `graphql:"text"`
+				} `graphql:"... on Blob"`
+			} `graphql:"object(expression: \"master:README.md\")"`
+			Description string
+			RepositoryTopics struct {
+				Nodes []struct {
+					Topic struct {
+						Name string `graphql:"name"`
+					} `graphql:"topic"`
+				} `graphql:"nodes"`
+			} `graphql:"repositoryTopics(first: 100)"`
+			Languages struct {
+				Nodes []struct {
+					Name string `graphql:"name"`
+				} `graphql:"nodes"`
+			} `graphql:"languages(first:100)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
 
@@ -46,22 +62,11 @@ type (
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
 
-	tagsQuery struct {
-		Repository struct {
-			RepositoryTopics struct {
-				Nodes []struct {
-					Topic struct {
-						Name string
-					}
-				}
-			} `graphql:"repositoryTopics(first: 100)"`
-		} `graphql:"repository(owner: $owner, name: $name)"`
-	}
 
 	issueStatusQuery struct {
 		Repository struct {
 			Issue struct {
-				Closed bool
+				Closed bool `graphql:"issues(last: 100)"`
 			} `graphql:"issue(number: $number)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
