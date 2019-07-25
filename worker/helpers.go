@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/nulls"
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"

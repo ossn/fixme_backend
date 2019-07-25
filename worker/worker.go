@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gobuffalo/uuid"
 	"github.com/ossn/fixme_backend/cache"
 	"github.com/ossn/fixme_backend/models"
 
-	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/nulls"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
@@ -99,8 +99,13 @@ type (
 )
 
 var (
-	client *githubv4.Client
+	client     *githubv4.Client
+	WorkerInst Worker
 )
+
+func init() {
+	WorkerInst = Worker{}
+}
 
 func (w *Worker) Init(ctx context.Context, c <-chan os.Signal) {
 	w.ctx = ctx
@@ -108,11 +113,12 @@ func (w *Worker) Init(ctx context.Context, c <-chan os.Signal) {
 	var src oauth2.TokenSource
 	if len(token) < 1 {
 		panic("Please provide a github token")
-	} else {
-		src = oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: token},
-		)
 	}
+
+	src = oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+
 	httpClient := oauth2.NewClient(ctx, src)
 
 	client = githubv4.NewClient(httpClient)
@@ -404,7 +410,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 		fmt.Println(errors.WithMessage(err, "failed to update issues"))
 	}
 
-	deleteAndUpdateCache()
+	go deleteAndUpdateCache()
 
 	// Update repo record once all the github issues have been parsed
 	if !hasPreviousPage {
@@ -506,27 +512,19 @@ func deleteAndUpdateCache() {
 	cache.DeleteKeysByPattern(&cacheConn, "issues:*")
 	cache.DeleteKeysByPattern(&cacheConn, "issues-count:*")
 
-	tx, err := models.DB.NewTransaction()
-	defer tx.Close()
-
-	if err != nil {
-		fmt.Println(errors.New("no transaction found"))
-		return
-	}
-
 	params := url.Values{}
 	issues := &models.Issues{}
-	defaultIssuesWhereClause := "issues:closed = false"
-	cacheKey := "issues:" + defaultIssuesWhereClause + "and page=1"
+	defaultIssuesWhereClause := "closed = false"
+	cacheKey := "issues:" + defaultIssuesWhereClause + " and page=1"
 	for _, filter := range []string{"language", "experience_needed", "type", "project_id", "ordering"} {
 		params.Set(filter, "undefined")
 	}
 	params.Set("page", "1")
-	q := tx.PaginateFromParams(params).Eager()
+	query := models.DB.PaginateFromParams(params).Eager()
 	ok, _ := cache.Exists(&cacheConn, cacheKey)
 
 	if !ok {
-		if err := q.Where(defaultIssuesWhereClause).All(issues); err != nil {
+		if err := query.Where(defaultIssuesWhereClause).All(issues); err != nil {
 			fmt.Println(errors.WithMessage(err, "DB Operation falied"))
 			return
 		}
@@ -542,5 +540,3 @@ func deleteAndUpdateCache() {
 		}
 	}
 }
-
-var WorkerInst = Worker{}
