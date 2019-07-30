@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"time"
+  "encoding/json"
 
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
@@ -107,11 +108,10 @@ func (w *Worker) UpdateRepositoryTopics() {
 			continue
 		}
 
-
-		description := stringToWords(projectInfo.Repository.Description)
+		description := strings.FieldsFunc(projectInfo.Repository.Description, split)
 		filteredTechnologies := searchForMatchingTechnologies(description)
 
-		readme := stringToWords(projectInfo.Repository.Object.Blob.Text)
+		readme := strings.FieldsFunc(projectInfo.Repository.Object.Blob.Text, split)
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
 
 		topics := []string{}
@@ -120,17 +120,24 @@ func (w *Worker) UpdateRepositoryTopics() {
 		}
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(topics)...)
 
-		fmt.Println(cleanupArray(filteredTechnologies))
 		project.IsGitHub = true
 		project.Tags = cleanupArray(filteredTechnologies)
-		//fmt.Println(project.Tags)
 
-		projectLanguages := []string{}
-		for _, language := range projectInfo.Repository.Languages.Nodes {
-			projectLanguages = append(projectLanguages, language.Name)
+
+		projectLanguages := make(map[string]float64)
+
+		for _, language := range projectInfo.Repository.Languages.Edges {
+			percentage := (float64(language.Size)/float64(projectInfo.Repository.Languages.TotalSize))*100
+			projectLanguages[language.Node.Name] = percentage
 		}
 
-		project.Languages = projectLanguages
+		bytes, err := json.Marshal(projectLanguages)
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "failed to convert to bytes"))
+			continue
+		}
+
+		project.Languages = string(bytes)
 
 
 		verr, err := project.Validate(models.DB)
@@ -198,7 +205,7 @@ func (w *Worker) getInitialIssues() {
 }
 
 // Get next page of issues
-func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, languages []string) {
+func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, languages string) {
 w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
@@ -218,7 +225,7 @@ w.waitUntilLimitIsRefreshed()
 }
 
 // Parse and save github issues
-func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, languages []string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, languages string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData.Repository.Issues.Nodes {
@@ -230,30 +237,35 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 			Number:       node.Number,
 			URL:          node.URL,
 			ProjectID:    project.ID,
-			Languages:    languages,
 		}
 
-		// Parse github labels
+
+		// Parse gitlab labels
 		labels := []string{}
-		for _, label := range node.Labels.Nodes {
-			name := &label.Name
-			labels = append(labels, *name)
-			// Search for known labels
-			matched := searchForMatchingLabels(name, githubIssue)
-			// Split name based on known delimeters
-			tmp := strings.FieldsFunc(*name, split)
-			// If label hasn't been matched try again with the splited string
-			if !matched && len(tmp) > 1 {
-				for _, label := range tmp {
-					searchForMatchingLabels(&label, githubIssue)
+		for _, node := range node.Labels.Nodes {
+			label := node.Name
+			labels = append(labels, label)
+		}
+
+		difficulty := searchForMatchingLabels(labels)
+
+		if difficulty == "unknown" {
+			for _, label := range labels {
+				// Split label based on known delimeters
+				parts := strings.FieldsFunc(label, split)
+				// If label hasn't been matched try again with the splited string
+				if len(parts) > 1 {
+						difficulty = searchForMatchingLabels(parts)
+				}
+				if difficulty == "easy" {
+					break
 				}
 			}
 		}
 
 		githubIssue.IsGitHub = true
 		githubIssue.Labels = labels
-		// Initialize experience needed with moderate - to be fixed!
-		githubIssue.ExperienceNeeded = "moderate"
+		githubIssue.ExperienceNeeded = difficulty
 
 		// Allocate empty issue
 		dbIssue := models.Issue{}
@@ -287,7 +299,6 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 	// Create all the new issues
 	err := models.DB.Create(&issuesToCreate)
 	if err != nil {
-		fmt.Println(project.Link)
 		fmt.Println(errors.WithMessage(err, "failed to create issues"))
 	}
 	// Update all existing issues

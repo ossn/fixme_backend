@@ -2,34 +2,41 @@ package worker_gitlab
 
 import (
 	"strings"
-
-	"github.com/ossn/fixme_backend/models"
 )
 
 func split(r rune) bool {
-	return r == ' ' || r == ':' || r == '.' || r == ','
+	return r == ' ' || r == ':' || r == '.'|| r == ';' || r == ',' || r == '(' || r == ')' || r == '<' || r == '>'
 }
 
 // Searches if a label matches some known labels and updates the model
-func searchForMatchingLabels(label *string, model *models.Issue) bool {
-	switch strings.ToLower(*label) {
-	case "help_wanted", "help wanted", "good first issue", "easyfix", "easy":
-		model.ExperienceNeeded = "easy"
-		return true
-	case "moderate":
-		model.ExperienceNeeded = "moderate"
-		return true
-	case "senior":
-		model.ExperienceNeeded = "senior"
-		return true
-	case "enhancement":
-		model.Type = "enhancement"
-		return true
-	case "bug", "bugfix":
-		model.Type = "bugfix"
-		return true
+func searchForMatchingLabels(labels []string) string {
+	for _, label := range labels {
+		switch strings.ToLower(label) {
+			case "easy",
+						"beginner",
+						"good first bug",
+						"starter",
+						"newbie",
+						"easyfix",
+						"easy-fix",
+						"beginner friendly",
+						"easy-pick",
+						"new contributors",
+						"first-timers-only",
+						"contribution-starter",
+						"good first issue",
+						"good for beginner",
+						"starter bug",
+						"good-for-beginner",
+						"first timers only",
+						"first time contributor",
+						"help-wanted",
+						"help_wanted",
+						"help wanted":
+				return "easy"
+		}
 	}
-	return false
+	return "unknown"
 }
 
 var technologiesMap map[string]string
@@ -90,10 +97,6 @@ func create_technologies_map() {
 	}
 }
 
-
-func stringToWords(str string) []string{
-	return strings.Fields(str)
-}
 
 // Remove duplicate strings from an array
 func cleanupArray(s []string) (r []string) {

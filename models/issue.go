@@ -17,7 +17,6 @@ type Issue struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 	Title string `json:"title" db:"title"`
 	ExperienceNeeded string `json:"experience_needed" db:"experience_needed"`
-	Languages slices.String `json:"languages" db:"languages"`
 	URL string `json:"url" db:"url"`
 	Body string `json:"body" db:"body"`
 	Type string `json:"type" db:"type"`
