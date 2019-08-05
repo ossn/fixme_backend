@@ -8,9 +8,6 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-func split(r rune) bool {
-	return r == ' ' || r == ':' || r == '.'|| r == ';' || r == ',' || r == '(' || r == ')' || r == '<' || r == '>'
-}
 
 // Extracts the name and the owner from a git url
 func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
@@ -25,36 +22,28 @@ func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
 }
 
 
+func split(r rune) bool {
+	return r == ' ' || r == ':' || r == '.'|| r == ';' || r == ',' || r == '(' || r == ')' || r == '<' || r == '>' || r == '-'
+}
+
 // Searches if a label matches some known labels and updates the model
 func searchForMatchingLabels(labels []string) string {
 	for _, label := range labels {
 		switch strings.ToLower(label) {
 			case "easy",
 						"beginner",
-						"good first bug",
-						"starter",
 						"newbie",
 						"easyfix",
-						"easy-fix",
-						"beginner friendly",
-						"easy-pick",
-						"new contributors",
-						"first-timers-only",
-						"contribution-starter",
-						"good first issue",
-						"good for beginner",
-						"starter bug",
-						"good-for-beginner",
-						"first timers only",
-						"first time contributor",
-						"help-wanted",
-						"help_wanted",
-						"help wanted":
+						"new",
+						"starter",
+						"first",
+						"help":
 				return "easy"
 		}
 	}
 	return "unknown"
 }
+
 
 
 var technologiesMap map[string]string
