@@ -4,8 +4,8 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/ossn/fixme_backend/models"
-	"github.com/ossn/fixme_backend/workers/worker_github"
-	"github.com/ossn/fixme_backend/workers/worker_gitlab"
+	"github.com/ossn/fixme_backend/workers/github"
+	"github.com/ossn/fixme_backend/workers/gitlab"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +23,7 @@ func(v ProjectsResource) List(c buffalo.Context) error {
 		return errors.WithStack(errors.New("no transaction found"))
 	}
 
-	projects := & models.Projects {}
+	projects := &models.Projects{}
 
 	// Paginate results. Params "page" and "per_page" control pagination.
 	// Default values are "page=1" and "per_page=20".

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
   "encoding/base64"
-	"encoding/json"
 
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
@@ -75,7 +74,7 @@ func (w *Worker) UpdateRepositoryTopics() {
 	}
 	for i, project := range projects {
 
-		filteredTechnologies := []string{}
+		var filteredTechnologies []string
 
 		projectInfo, _, err := client.Projects.GetProject(project.ProjectID, nil)
 
@@ -103,31 +102,23 @@ func (w *Worker) UpdateRepositoryTopics() {
 			}
 		}
 
-		project.Tags = cleanupArray(filteredTechnologies)
-		project.IsGitHub = false
 
 		//Find languages
 		languages, _, err := client.Projects.GetProjectLanguages(project.ProjectID, nil)
-
 		if err != nil {
 			fmt.Println(errors.WithMessage(err, "couldn't find languages"))
 			return
 		}
 
-
-		projectLanguages := make(map[string]float32)
-
-		for language, percentage := range *languages {
-				projectLanguages[language] = percentage
+		var projectLanguages []string
+		for language, _ := range *languages {
+				projectLanguages = append(projectLanguages, language)
 		}
 
-		bytes, err := json.Marshal(projectLanguages)
-		if err != nil {
-			fmt.Println(errors.WithMessage(err, "failed to convert to bytes"))
-			continue
-		}
+		technologies := append(cleanupArray(filteredTechnologies), projectLanguages...)
+		project.Technologies = technologies
 
-		project.Languages = string(bytes)
+		project.IsGitHub = false
 
 
 		verr, err := project.Validate(models.DB)
@@ -178,22 +169,23 @@ func (w *Worker) getInitialIssues() {
 		return
 	}
 
+
 	// full pages (20) of issues
 	for len(issueData) == 20 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, true)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, true)
 		issuesOptions.ListOptions.Page = response.NextPage
 		issueData, response, err = client.Issues.ListProjectIssues(lastUpdatedProject.ProjectID, issuesOptions)
 	}
 
 	// last page of issues
 	if len(issueData) > 0 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, false)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, false)
 	}
 }
 
 
 // Parse and save gitlab issues
-func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, languages string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData {
@@ -208,7 +200,7 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.P
 		}
 
 		// Parse gitlab labels
-		labels := []string{}
+		var labels []string
 		for _, label := range node.Labels {
 			labels = append(labels, label)
 		}
@@ -231,6 +223,7 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.P
 
 
 		gitlabIssue.IsGitHub = false
+		gitlabIssue.Technologies = project.Technologies
 		gitlabIssue.Labels = labels
 		gitlabIssue.ExperienceNeeded = difficulty
 

@@ -31,12 +31,21 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 
 	whereClause := "closed = false"
 
-	for _, filter := range []string{"language", "experience_needed", "type", "project_id"} {
-		param := params.Get(filter)
-		if param != "" {
-			requestParamToQueryFilter(&whereClause, &param, &filter)
+	for _, filter := range []string{"technology", "experience_needed", "is_github", "project_id"} {
+		if filter == "technology" {
+			param := params.Get("technology")
+			if param == "undefined" {
+				continue
+			}
+			whereClause = help(param, whereClause)
+		} else {
+			param := params.Get(filter)
+			if param != "" {
+				requestParamToQueryFilter(&whereClause, &param, &filter)
+			}
 		}
 	}
+
 	// Retrieve all Issues from the DB
 	if err := q.Where(whereClause).All(issues); err != nil {
 		return errors.WithStack(err)
@@ -105,10 +114,18 @@ func (v IssuesResource) Count(c buffalo.Context) error {
 	// Default values are "page=1" and "per_page=20".
 
 	whereClause := "closed = false"
-	for _, filter := range []string{"language", "experience_needed", "type", "project_id"} {
-		param := params.Get(filter)
-		if param != "" {
-			requestParamToQueryFilter(&whereClause, &param, &filter)
+	for _, filter := range []string{"technology", "experience_needed", "is_github", "project_id"} {
+		if filter == "technology" {
+			param := params.Get("technology")
+			if param == "undefined" {
+				continue
+			}
+			whereClause = help(param, whereClause)
+		} else {
+			param := params.Get(filter)
+			if param != "" {
+				requestParamToQueryFilter(&whereClause, &param, &filter)
+			}
 		}
 	}
 	count, err := q.Where(whereClause).Count(issues)
@@ -148,4 +165,19 @@ func requestParamToQueryFilter(query, paramValue, paramName *string) {
 			*query += ")"
 		}
 	}
+}
+
+func help(param string, whereClause string) string {
+	param = strings.TrimSuffix(strings.TrimPrefix(param, "["), "]")
+	splitParam := strings.Split(param, ",")
+
+	if len(splitParam) == 0 {
+		return whereClause
+	}
+	whereClause += " and '{" + string(splitParam[0])
+	for i := 1; i < len(splitParam); i++ {
+		whereClause += ", " + string(splitParam[i])
+	}
+	whereClause += "}' && technologies"
+	return whereClause
 }

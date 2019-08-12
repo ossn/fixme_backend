@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"time"
-  "encoding/json"
 
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
@@ -114,31 +113,22 @@ func (w *Worker) UpdateRepositoryTopics() {
 		readme := strings.FieldsFunc(projectInfo.Repository.Object.Blob.Text, split)
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
 
-		topics := []string{}
+
+		var topics []string
 		for _, topic := range projectInfo.Repository.RepositoryTopics.Nodes {
 			topics = append(topics, topic.Topic.Name)
 		}
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(topics)...)
 
-		project.IsGitHub = true
-		project.Tags = cleanupArray(filteredTechnologies)
-
-
-		projectLanguages := make(map[string]float64)
-
+    var projectLanguages []string
 		for _, language := range projectInfo.Repository.Languages.Edges {
-			percentage := (float64(language.Size)/float64(projectInfo.Repository.Languages.TotalSize))*100
-			projectLanguages[language.Node.Name] = percentage
+			projectLanguages = append(projectLanguages, language.Node.Name)
 		}
 
-		bytes, err := json.Marshal(projectLanguages)
-		if err != nil {
-			fmt.Println(errors.WithMessage(err, "failed to convert to bytes"))
-			continue
-		}
+		technologies := append(cleanupArray(filteredTechnologies), projectLanguages...)
+		project.Technologies = technologies
 
-		project.Languages = string(bytes)
-
+		project.IsGitHub = true
 
 		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
@@ -196,16 +186,16 @@ func (w *Worker) getInitialIssues() {
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, lastUpdatedProject.Languages, hasPreviousPage)
+	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject, lastUpdatedProject.Languages)
+		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject)
 	}
 
 }
 
 // Get next page of issues
-func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, languages string) {
+func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project,) {
 w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
@@ -216,32 +206,33 @@ w.waitUntilLimitIsRefreshed()
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueData, project, languages, hasPreviousPage)
+	go w.parseAndSaveIssues(issueData, project, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project, languages)
+		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project)
 	}
 
 }
 
 // Parse and save github issues
-func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, languages string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
+
 	for _, node := range issueData.Repository.Issues.Nodes {
 		githubIssue := &models.Issue{
 			IssueID:	    node.DatabaseID,
 			Body:         node.Body,
 			Title:        node.Title,
-			Closed:       node.Closed,
 			Number:       node.Number,
 			URL:          node.URL,
 			ProjectID:    project.ID,
+			Closed:       node.Closed,
 		}
 
 
 		// Parse gitlab labels
-		labels := []string{}
+		var labels []string
 		for _, node := range node.Labels.Nodes {
 			label := node.Name
 			labels = append(labels, label)
@@ -264,6 +255,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 		}
 
 		githubIssue.IsGitHub = true
+		githubIssue.Technologies = project.Technologies
 		githubIssue.Labels = labels
 		githubIssue.ExperienceNeeded = difficulty
 

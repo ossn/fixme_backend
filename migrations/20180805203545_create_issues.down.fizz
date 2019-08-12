@@ -1,3 +1,1 @@
-drop_foreign_key("issues", "issues_repositories_id_fk", {"if_exists": true})
-drop_foreign_key("issues", "issues_projects_id_fk", {"if_exists": true})
 drop_table("issues")

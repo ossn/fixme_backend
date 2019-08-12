@@ -21,9 +21,10 @@ type Issue struct {
 	Body string `json:"body" db:"body"`
 	Type string `json:"type" db:"type"`
 	Project Project `json:"project" db:"-" belongs_to:"project"`
-	ProjectID uuid.UUID `json:"project_id" db:"project_id" `
+	ProjectID uuid.UUID `json:"project_id" db:"project_id"`
 	Number int `json:"number" db:"number"`
 	Closed bool `json:"closed" db:"closed"`
+	Technologies slices.String `json:"technologies" db:"technologies"`
 	Labels slices.String `json:"labels" db:"labels"`
 	IsGitHub bool `json:"is_github" db:"is_github"`
 }

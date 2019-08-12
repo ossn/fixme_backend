@@ -1,8 +1,26 @@
-package worker_gitlab
+package worker_github
 
 import (
+	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/shurcooL/githubv4"
 )
+
+
+// Extracts the name and the owner from a git url
+func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
+
+	tmp := strings.Split(strings.TrimSuffix(url, "/"), "/")
+	if len(tmp) < 2 {
+		err := errors.New(fmt.Sprintf("Couldn't find repo %s", url))
+		fmt.Println(errors.Wrap(err, "failed to find url"))
+		return githubv4.String(""), githubv4.String(""), err
+	}
+	return githubv4.String(tmp[len(tmp)-1]), githubv4.String(tmp[len(tmp)-2]), nil
+}
+
 
 func split(r rune) bool {
 	return r == ' ' || r == ':' || r == '.'|| r == ';' || r == ',' || r == '(' || r == ')' || r == '<' || r == '>' || r == '-'
@@ -25,6 +43,8 @@ func searchForMatchingLabels(labels []string) string {
 	}
 	return "unknown"
 }
+
+
 
 var technologiesMap map[string]string
 
@@ -88,7 +108,6 @@ func create_technologies_map() {
 // Remove duplicate strings from an array
 func cleanupArray(s []string) (r []string) {
 	seen := make(map[string]bool, len(s))
-	seen[""] = true
 	for _, str := range s {
 		if _, exists := seen[str]; !exists {
 			seen[str] = true
@@ -120,6 +139,8 @@ func searchForMatchingTechnologies(words []string) []string {
 			myTechnologies = append(myTechnologies, technologiesMap[word])
 		}
 	}
+
+	//fmt.Println(myTechnologies)
 
 	return myTechnologies
 }
