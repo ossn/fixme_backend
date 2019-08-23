@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"math/rand"
 
-	"github.com/gobuffalo/uuid"
-
 	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/suite"
+	"github.com/gofrs/uuid"
 	"github.com/ossn/fixme_backend/models"
 )
 

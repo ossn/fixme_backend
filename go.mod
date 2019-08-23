@@ -5,31 +5,25 @@ go 1.12
 require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/gobuffalo/buffalo v0.14.6
-	github.com/gobuffalo/buffalo-pop v1.16.0
+	github.com/gobuffalo/buffalo v0.14.9
+	github.com/gobuffalo/buffalo-pop v1.17.2
 	github.com/gobuffalo/envy v1.7.0
-	github.com/gobuffalo/helpers v0.2.4 // indirect
-	github.com/gobuffalo/logger v1.0.1 // indirect
+	github.com/gobuffalo/flect v0.1.6 // indirect
 	github.com/gobuffalo/mw-contenttype v0.0.0-20190224202710-36c73cc938f3
 	github.com/gobuffalo/mw-csrf v0.0.0-20190129204204-25460a055517 // indirect
 	github.com/gobuffalo/mw-paramlogger v0.0.0-20190224201358-0d45762ab655
 	github.com/gobuffalo/mw-tokenauth v0.0.0-20190224160709-de0b19e98543
 	github.com/gobuffalo/nulls v0.1.0
 	github.com/gobuffalo/packr/v2 v2.5.2
-	github.com/gobuffalo/pop v4.11.2+incompatible
-	github.com/gobuffalo/suite v2.7.0+incompatible
-	github.com/gobuffalo/uuid v2.0.5+incompatible
+	github.com/gobuffalo/pop v4.11.3+incompatible
+	github.com/gobuffalo/suite v2.8.1+incompatible
 	github.com/gobuffalo/validate v2.0.3+incompatible
 	github.com/gobuffalo/x v0.1.0
+	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/gorilla/mux v1.7.3 // indirect
-	github.com/gorilla/sessions v1.2.0 // indirect
-	github.com/jackc/pgx v3.5.0+incompatible // indirect
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/markbates/grift v1.1.0
-	github.com/markbates/oncer v1.0.0 // indirect
-	github.com/markbates/refresh v1.8.0 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.6.0

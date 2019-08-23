@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 11.4
--- Dumped by pg_dump version 11.4
+-- Dumped from database version 11.5 (Debian 11.5-1.pgdg90+1)
+-- Dumped by pg_dump version 11.5 (Debian 11.5-1.pgdg100+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -21,7 +21,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: admins; Type: TABLE; Schema: public; Owner: postgres
+-- Name: admins; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.admins (
@@ -33,10 +33,10 @@ CREATE TABLE public.admins (
 );
 
 
-ALTER TABLE public.admins OWNER TO postgres;
+ALTER TABLE public.admins OWNER TO "USER";
 
 --
--- Name: issues; Type: TABLE; Schema: public; Owner: postgres
+-- Name: issues; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.issues (
@@ -60,10 +60,10 @@ CREATE TABLE public.issues (
 );
 
 
-ALTER TABLE public.issues OWNER TO postgres;
+ALTER TABLE public.issues OWNER TO "USER";
 
 --
--- Name: projects; Type: TABLE; Schema: public; Owner: postgres
+-- Name: projects; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.projects (
@@ -82,10 +82,10 @@ CREATE TABLE public.projects (
 );
 
 
-ALTER TABLE public.projects OWNER TO postgres;
+ALTER TABLE public.projects OWNER TO "USER";
 
 --
--- Name: repositories; Type: TABLE; Schema: public; Owner: postgres
+-- Name: repositories; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.repositories (
@@ -100,21 +100,21 @@ CREATE TABLE public.repositories (
 );
 
 
-ALTER TABLE public.repositories OWNER TO postgres;
+ALTER TABLE public.repositories OWNER TO "USER";
 
 --
--- Name: schema_migration; Type: TABLE; Schema: public; Owner: postgres
+-- Name: schema_migration; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.schema_migration (
-    version character varying(255) NOT NULL
+    version character varying(14) NOT NULL
 );
 
 
-ALTER TABLE public.schema_migration OWNER TO postgres;
+ALTER TABLE public.schema_migration OWNER TO "USER";
 
 --
--- Name: admins admins_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: admins admins_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.admins
@@ -122,7 +122,7 @@ ALTER TABLE ONLY public.admins
 
 
 --
--- Name: issues issues_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: issues issues_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.issues
@@ -130,7 +130,7 @@ ALTER TABLE ONLY public.issues
 
 
 --
--- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.projects
@@ -138,7 +138,7 @@ ALTER TABLE ONLY public.projects
 
 
 --
--- Name: repositories repositories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: repositories repositories_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.repositories
@@ -146,35 +146,35 @@ ALTER TABLE ONLY public.repositories
 
 
 --
--- Name: index_issue_experience_needed; Type: INDEX; Schema: public; Owner: postgres
+-- Name: index_issue_experience_needed; Type: INDEX; Schema: public; Owner: USER
 --
 
 CREATE INDEX index_issue_experience_needed ON public.issues USING btree (experience_needed);
 
 
 --
--- Name: index_issue_language; Type: INDEX; Schema: public; Owner: postgres
+-- Name: index_issue_language; Type: INDEX; Schema: public; Owner: USER
 --
 
 CREATE INDEX index_issue_language ON public.issues USING btree (language);
 
 
 --
--- Name: index_issue_type; Type: INDEX; Schema: public; Owner: postgres
+-- Name: index_issue_type; Type: INDEX; Schema: public; Owner: USER
 --
 
 CREATE INDEX index_issue_type ON public.issues USING btree (type);
 
 
 --
--- Name: schema_migration_version_idx; Type: INDEX; Schema: public; Owner: postgres
+-- Name: schema_migration_version_idx; Type: INDEX; Schema: public; Owner: USER
 --
 
 CREATE UNIQUE INDEX schema_migration_version_idx ON public.schema_migration USING btree (version);
 
 
 --
--- Name: issues issues_projects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: issues issues_projects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.issues
@@ -182,7 +182,7 @@ ALTER TABLE ONLY public.issues
 
 
 --
--- Name: issues issues_repositories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: issues issues_repositories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.issues
@@ -190,7 +190,7 @@ ALTER TABLE ONLY public.issues
 
 
 --
--- Name: repositories repositories_projects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: repositories repositories_projects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.repositories

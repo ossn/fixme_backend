@@ -1,4 +1,4 @@
-FROM gobuffalo/buffalo:v0.14.6
+FROM gobuffalo/buffalo:v0.14.9
 
 RUN apt update && apt install -y git ssh ca-certificates
 RUN mkdir -p /go/src/github.com/ossn/fixme_backend
@@ -9,4 +9,4 @@ RUN mkdir ~/.ssh && ssh-keyscan -t rsa github.com >~/.ssh/known_hosts
 ENV ADDR=0.0.0.0
 ENV GO111MODULE=on
 COPY . .
-CMD buffalo db migrate; buffalo task db:seed; buffalo dev
+CMD buffalo db migrate && buffalo task db:seed && buffalo dev

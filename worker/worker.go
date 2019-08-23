@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gobuffalo/uuid"
+	"github.com/gofrs/uuid"
 	"github.com/ossn/fixme_backend/cache"
 	"github.com/ossn/fixme_backend/models"
 
