@@ -38,7 +38,7 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 		}
 	}
 	// Retrieve all Issues from the DB
-	if err := q.Where(whereClause).All(issues); err != nil {
+	if err := q.Where(whereClause).All(issues).Order("github_updated_at desc"); err != nil {
 		return errors.WithStack(err)
 	}
 	c.Set("pagination", q.Paginator)
@@ -62,7 +62,7 @@ func (v IssuesResource) List(c buffalo.Context) error {
 	q := tx.PaginateFromParams(params).Eager()
 
 	// Retrieve all Issues from the DB
-	if err := q.All(issues); err != nil {
+	if err := q.All(issues).Order("github_updated_at desc"); err != nil {
 		return errors.WithStack(err)
 	}
 	c.Set("pagination", q.Paginator)
