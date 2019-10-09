@@ -334,10 +334,9 @@ func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, re
 
 // Parse string to time.Time
 func timeConvert(GHUpdatedTime string) time.Time {
-	layout := "2006-01-02T15:04:05Z"
-	t, err := time.Parse(layout, GHUpdatedTime)
+	t, err := time.Parse(time.RFC3339, GHUpdatedTime)
 	if err != nil {
-	    fmt.Println(err)
+		fmt.Println(err)
 	}
 	return t
 }
@@ -348,15 +347,15 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData.Repository.Issues.Nodes {
 		githubIssue := &models.Issue{
-			GithubID:     node.DatabaseID,
-			Body:         nulls.String{String: node.Body, Valid: node.Body != ""},
-			Title:        nulls.String{String: node.Title, Valid: node.Title != ""},
-			Closed:       node.Closed,
-			Number:       node.Number,
-			URL:          node.URL,
-			RepositoryID: repository.ID,
-			ProjectID:    repository.ProjectID,
-			Language:     nulls.String{String: strings.ToLower(*language), Valid: *language != ""},
+			GithubID:        node.DatabaseID,
+			Body:            nulls.String{String: node.Body, Valid: node.Body != ""},
+			Title:           nulls.String{String: node.Title, Valid: node.Title != ""},
+			Closed:          node.Closed,
+			Number:          node.Number,
+			URL:             node.URL,
+			RepositoryID:    repository.ID,
+			ProjectID:       repository.ProjectID,
+			Language:        nulls.String{String: strings.ToLower(*language), Valid: *language != ""},
 			GithubUpdatedAt: timeConvert(node.UpdatedAt),
 		}
 
