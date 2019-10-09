@@ -334,7 +334,7 @@ func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, re
 
 // Parse string to time.Time
 func timeConvert(GHUpdatedTime string) time.Time {
-	layout := "2006-01-02T15:04:05"
+	layout := "2006-01-02T15:04:05Z"
 	t, err := time.Parse(layout, GHUpdatedTime)
 	if err != nil {
 	    fmt.Println(err)
