@@ -56,7 +56,8 @@ CREATE TABLE public.issues (
     project_id uuid NOT NULL,
     closed boolean DEFAULT false NOT NULL,
     created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    updated_at timestamp without time zone NOT NULL,
+    github_updated_at timestamp with time zone NOT NULL
 );
 
 
