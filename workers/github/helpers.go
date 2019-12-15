@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 )
 
-func split(r rune) bool {
-	return r == ' ' || r == ':' || r == '.' || r == ','
-}
 
 // Extracts the name and the owner from a git url
 func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
@@ -26,27 +22,29 @@ func getNameAndOwner(url string) (githubv4.String, githubv4.String, error) {
 }
 
 
-// Searches if a label matches some known labels and updates the model
-func searchForMatchingLabels(label *string, model *models.Issue) bool {
-	switch strings.ToLower(*label) {
-	case "help_wanted", "help wanted", "good first issue", "easyfix", "easy":
-		model.ExperienceNeeded = "easy"
-		return true
-	case "moderate":
-		model.ExperienceNeeded = "moderate"
-		return true
-	case "senior":
-		model.ExperienceNeeded = "senior"
-		return true
-	case "enhancement":
-		model.Type = "enhancement"
-		return true
-	case "bug", "bugfix":
-		model.Type = "bugfix"
-		return true
-	}
-	return false
+func split(r rune) bool {
+	return r == ' ' || r == ':' || r == '.'|| r == ';' || r == ',' || r == '(' || r == ')' || r == '<' || r == '>' || r == '-'
 }
+
+// Searches if a label matches some known labels and updates the model
+func searchForMatchingLabels(labels []string) string {
+	for _, label := range labels {
+		switch strings.ToLower(label) {
+			case "easy",
+						"beginner",
+						"newbie",
+						"easyfix",
+						"new",
+						"starter",
+						"first",
+						"help":
+				return "easy"
+		}
+	}
+	return "unknown"
+}
+
+
 
 var technologiesMap map[string]string
 
@@ -107,14 +105,9 @@ func create_technologies_map() {
 }
 
 
-func stringToWords(str string) []string{
-	return strings.Fields(str)
-}
-
 // Remove duplicate strings from an array
 func cleanupArray(s []string) (r []string) {
 	seen := make(map[string]bool, len(s))
-	seen[""] = true
 	for _, str := range s {
 		if _, exists := seen[str]; !exists {
 			seen[str] = true

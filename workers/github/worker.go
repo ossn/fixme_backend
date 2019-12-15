@@ -115,31 +115,28 @@ func (w *Worker) UpdateRepositoryTopics() {
 			continue
 		}
 
-
-		description := stringToWords(projectInfo.Repository.Description)
+		description := strings.FieldsFunc(projectInfo.Repository.Description, split)
 		filteredTechnologies := searchForMatchingTechnologies(description)
 
-		readme := stringToWords(projectInfo.Repository.Object.Blob.Text)
+		readme := strings.FieldsFunc(projectInfo.Repository.Object.Blob.Text, split)
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
 
-		topics := []string{}
+
+		var topics []string
 		for _, topic := range projectInfo.Repository.RepositoryTopics.Nodes {
 			topics = append(topics, topic.Topic.Name)
 		}
 		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(topics)...)
 
-		fmt.Println(cleanupArray(filteredTechnologies))
-		project.IsGitHub = true
-		project.Tags = cleanupArray(filteredTechnologies)
-		//fmt.Println(project.Tags)
-
-		projectLanguages := []string{}
-		for _, language := range projectInfo.Repository.Languages.Nodes {
-			projectLanguages = append(projectLanguages, language.Name)
+    var projectLanguages []string
+		for _, language := range projectInfo.Repository.Languages.Edges {
+			projectLanguages = append(projectLanguages, language.Node.Name)
 		}
 
-		project.Languages = projectLanguages
+		technologies := append(cleanupArray(filteredTechnologies), projectLanguages...)
+		project.Technologies = technologies
 
+		project.IsGitHub = true
 
 		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
@@ -197,16 +194,16 @@ func (w *Worker) getInitialIssues() {
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, lastUpdatedProject.Languages, hasPreviousPage)
+	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject, lastUpdatedProject.Languages)
+		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject)
 	}
 
 }
 
 // Get next page of issues
-func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project, languages []string) {
+func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project,) {
 w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
@@ -217,51 +214,58 @@ w.waitUntilLimitIsRefreshed()
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueData, project, languages, hasPreviousPage)
+	go w.parseAndSaveIssues(issueData, project, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project, languages)
+		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project)
 	}
 
 }
 
 // Parse and save github issues
-func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, languages []string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
+
 	for _, node := range issueData.Repository.Issues.Nodes {
 		githubIssue := &models.Issue{
 			IssueID:	    node.DatabaseID,
 			Body:         node.Body,
 			Title:        node.Title,
-			Closed:       node.Closed,
 			Number:       node.Number,
 			URL:          node.URL,
 			ProjectID:    project.ID,
-			Languages:    languages,
+			Closed:       node.Closed,
 		}
 
-		// Parse github labels
-		labels := []string{}
-		for _, label := range node.Labels.Nodes {
-			name := &label.Name
-			labels = append(labels, *name)
-			// Search for known labels
-			matched := searchForMatchingLabels(name, githubIssue)
-			// Split name based on known delimeters
-			tmp := strings.FieldsFunc(*name, split)
-			// If label hasn't been matched try again with the splited string
-			if !matched && len(tmp) > 1 {
-				for _, label := range tmp {
-					searchForMatchingLabels(&label, githubIssue)
+
+		// Parse gitlab labels
+		var labels []string
+		for _, node := range node.Labels.Nodes {
+			label := node.Name
+			labels = append(labels, label)
+		}
+
+		difficulty := searchForMatchingLabels(labels)
+
+		if difficulty == "unknown" {
+			for _, label := range labels {
+				// Split label based on known delimeters
+				parts := strings.FieldsFunc(label, split)
+				// If label hasn't been matched try again with the splited string
+				if len(parts) > 1 {
+						difficulty = searchForMatchingLabels(parts)
+				}
+				if difficulty == "easy" {
+					break
 				}
 			}
 		}
 
 		githubIssue.IsGitHub = true
+		githubIssue.Technologies = project.Technologies
 		githubIssue.Labels = labels
-		// Initialize experience needed with moderate - to be fixed!
-		githubIssue.ExperienceNeeded = "moderate"
+		githubIssue.ExperienceNeeded = difficulty
 
 		// Allocate empty issue
 		dbIssue := models.Issue{}
@@ -295,7 +299,6 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 	// Create all the new issues
 	err := models.DB.Create(&issuesToCreate)
 	if err != nil {
-		fmt.Println(project.Link)
 		fmt.Println(errors.WithMessage(err, "failed to create issues"))
 	}
 	// Update all existing issues

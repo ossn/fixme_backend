@@ -43,10 +43,14 @@ type (
 				} `graphql:"nodes"`
 			} `graphql:"repositoryTopics(first: 100)"`
 			Languages struct {
-				Nodes []struct {
-					Name string `graphql:"name"`
-				} `graphql:"nodes"`
-			} `graphql:"languages(first:100)"`
+				Edges []struct{
+					Size int `graphql:"size"`
+					Node struct {
+						Name string `graphql:"name"`
+					} `graphql:"node"`
+				} `graphql:"edges"`
+				TotalSize int `graphql:"totalSize"`
+			} `graphql:"languages(first:100, orderBy: {field: SIZE, direction: DESC})"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
 

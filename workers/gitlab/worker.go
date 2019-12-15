@@ -74,7 +74,7 @@ func (w *Worker) UpdateRepositoryTopics() {
 	}
 	for i, project := range projects {
 
-		filteredTechnologies := []string{}
+		var filteredTechnologies []string
 
 		projectInfo, _, err := client.Projects.GetProject(project.ProjectID, nil)
 
@@ -82,7 +82,7 @@ func (w *Worker) UpdateRepositoryTopics() {
 			fmt.Println(errors.WithMessage(err, "couldn't find languages"))
 			return
 		} else {
-			description := stringToWords(projectInfo.Description)
+			description := strings.FieldsFunc(projectInfo.Description, split)
 			filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(description)...)
 		}
 
@@ -97,29 +97,29 @@ func (w *Worker) UpdateRepositoryTopics() {
 			if err != nil {
 							fmt.Println("error:", err)
 			} else {
-				readme := stringToWords(string(data))
+				readme := strings.FieldsFunc(string(data), split)
 				filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
 			}
 		}
 
-		fmt.Println(cleanupArray(filteredTechnologies))
-		project.Tags = cleanupArray(filteredTechnologies)
-		project.IsGitHub = false
 
 		//Find languages
 		languages, _, err := client.Projects.GetProjectLanguages(project.ProjectID, nil)
-
 		if err != nil {
 			fmt.Println(errors.WithMessage(err, "couldn't find languages"))
 			return
 		}
 
-		projectLanguages := []string{}
+		var projectLanguages []string
 		for language, _ := range *languages {
-			projectLanguages = append(projectLanguages, language)
+				projectLanguages = append(projectLanguages, language)
 		}
 
-		project.Languages = projectLanguages
+		technologies := append(cleanupArray(filteredTechnologies), projectLanguages...)
+		project.Technologies = technologies
+
+		project.IsGitHub = false
+
 
 		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
@@ -169,22 +169,23 @@ func (w *Worker) getInitialIssues() {
 		return
 	}
 
+
 	// full pages (20) of issues
 	for len(issueData) == 20 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, true)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, true)
 		issuesOptions.ListOptions.Page = response.NextPage
 		issueData, response, err = client.Issues.ListProjectIssues(lastUpdatedProject.ProjectID, issuesOptions)
 	}
 
 	// last page of issues
 	if len(issueData) > 0 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, false)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, false)
 	}
 }
 
 
 // Parse and save gitlab issues
-func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, languages []string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData {
@@ -196,29 +197,35 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.P
 			Number:       node.IID,
 			URL:          node.WebURL,
 			ProjectID:    project.ID,
-			Languages:    languages,
 		}
 
 		// Parse gitlab labels
-		labels := []string{}
+		var labels []string
 		for _, label := range node.Labels {
-			name := &label
-			labels = append(labels, *name)
-			// Search for known labels
-			matched := searchForMatchingLabels(name, gitlabIssue)
-			// Split name based on known delimeters
-			tmp := strings.FieldsFunc(*name, split)
-			// If label hasn't been matched try again with the splited string
-			if !matched && len(tmp) > 1 {
-				for _, label := range tmp {
-					searchForMatchingLabels(&label, gitlabIssue)
+			labels = append(labels, label)
+		}
+
+		difficulty := searchForMatchingLabels(labels)
+
+		if difficulty == "unknown" {
+			for _, label := range labels {
+				// Split label based on known delimeters
+				parts := strings.FieldsFunc(label, split)
+				// If label hasn't been matched try again with the splited string
+				if len(parts) > 1 {
+						difficulty = searchForMatchingLabels(parts)
+				}
+				if difficulty == "easy" {
+					break
 				}
 			}
 		}
+
+
 		gitlabIssue.IsGitHub = false
+		gitlabIssue.Technologies = project.Technologies
 		gitlabIssue.Labels = labels
-		// Initialize experience needed with moderate - to be fixed!
-		gitlabIssue.ExperienceNeeded = "moderate"
+		gitlabIssue.ExperienceNeeded = difficulty
 
 		// Allocate empty issue if there is no issue with the same id
 		dbIssue := models.Issue{}
