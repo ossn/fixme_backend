@@ -5,6 +5,14 @@ RUN mkdir -p /go/src/github.com/ossn/fixme_backend
 WORKDIR /go/src/github.com/ossn/fixme_backend
 RUN mkdir ~/.ssh && ssh-keyscan -t rsa github.com >~/.ssh/known_hosts
 
+# Install dep
+RUN curl -fsSL -o /usr/local/bin/dep $(curl -s https://api.github.com/repos/golang/dep/releases/latest | jq -r ".assets[] | select(.name | test(\"dep-linux-amd64\")) |.browser_download_url") && chmod +x /usr/local/bin/dep
+
+# Build app
+COPY Gopkg.toml Gopkg.lock ./
+RUN go get -u github.com/golang/dep/cmd/dep
+RUN dep ensure -vendor-only
+
 COPY . .
 RUN GO111MODULE=on buffalo build --environment=production --static -o /bin/app
 

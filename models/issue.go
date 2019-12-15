@@ -20,7 +20,7 @@ type Issue struct {
 	ExpectedTime     nulls.String  `json:"expected_time" db:"expected_time"`
 	Language         nulls.String  `json:"language" db:"language"`
 	TechStack        nulls.String  `json:"tech_stack" db:"tech_stack"`
-	GithubID         int           `json:"github_id" db:"github_id"`
+	IssueID					 int           `json:"issue_id" db:"issue_id"`
 	URL              string        `json:"url" db:"url"`
 	Body             nulls.String  `json:"body" db:"body"`
 	Type             nulls.String  `json:"type" db:"type"`
@@ -38,7 +38,7 @@ type Issues []Issue
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 func (i *Issue) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.IntIsPresent{Field: i.GithubID, Name: "GithubID"},
+		&validators.IntIsPresent{Field: i.IssueID, Name: "IssueID"},
 		&validators.IntIsPresent{Field: i.Number, Name: "Number"},
 		&validators.StringIsPresent{Field: i.URL, Name: "URL"},
 	), nil

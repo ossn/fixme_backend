@@ -171,7 +171,7 @@ func (w *Worker) repositoryTopicsPolling() {
 func (w *Worker) UpdateRepositoryTopics() {
 	w.waitUntilLimitIsRefreshed()
 	repos := models.Repositories{}
-	err := models.DB.All(&repos)
+	err := models.DB.Where("is_github = ?", true).All(&repos)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "failed to get repos"))
 		return
@@ -213,7 +213,7 @@ func (w *Worker) UpdateRepositoryTopics() {
 	}
 
 	projects := models.Projects{}
-	err = models.DB.All(&projects)
+	err = models.DB.Where("is_github = ?", true).All(&projects)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "failed to get repos"))
 		return
@@ -337,7 +337,7 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData.Repository.Issues.Nodes {
 		githubIssue := &models.Issue{
-			GithubID:     node.DatabaseID,
+			IssueID:      node.DatabaseID,
 			Body:         nulls.String{String: node.Body, Valid: node.Body != ""},
 			Title:        nulls.String{String: node.Title, Valid: node.Title != ""},
 			Closed:       node.Closed,
@@ -460,6 +460,8 @@ func (w *Worker) updateProjectOnFinish(repository *models.Repository) {
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Failed to update project"))
 	}
+
+	project.IsGitHub = true;
 }
 
 // Cleanup project issues that have been deleted or couldn't be found in the repo

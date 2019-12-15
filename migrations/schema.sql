@@ -46,7 +46,7 @@ CREATE TABLE public.issues (
     expected_time character varying(255),
     language character varying(255),
     tech_stack character varying(255),
-    github_id integer NOT NULL,
+    issue_id integer NOT NULL,
     number integer NOT NULL,
     labels character varying[],
     url text NOT NULL,
@@ -78,7 +78,8 @@ CREATE TABLE public.projects (
     issues_count integer NOT NULL,
     tags character varying[] NOT NULL,
     created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    updated_at timestamp without time zone NOT NULL,
+    is_github boolean DEFAULT false NOT NULL
 );
 
 
@@ -96,7 +97,8 @@ CREATE TABLE public.repositories (
     last_parsed timestamp without time zone DEFAULT '1999-01-08 00:00:00'::timestamp without time zone NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL,
-    tags character varying[]
+    tags character varying[],
+    is_github boolean DEFAULT false NOT NULL
 );
 
 
@@ -200,4 +202,3 @@ ALTER TABLE ONLY public.repositories
 --
 -- PostgreSQL database dump complete
 --
-

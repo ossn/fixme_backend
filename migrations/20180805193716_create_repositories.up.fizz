@@ -4,6 +4,7 @@ create_table("repositories") {
 	t.Column("project_id", "uuid", {})
 	t.Column("issue_count", "integer", {"default": 0})
 	t.Column("last_parsed", "timestamp",{"default": "1999-01-08"})
+	t.Column("is_github", "bool", {"default": false})
 }
 
 add_foreign_key("repositories", "project_id", {"projects": ["id"]}, {

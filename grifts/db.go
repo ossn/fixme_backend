@@ -24,17 +24,18 @@ var _ = grift.Namespace("db", func() {
 var repositories = models.Repositories{
 	{
 		Project: models.Project{
-			DisplayName:   "Common Voice",
-			FirstColor:    "#ABDEF5",
-			SecondColor:   nulls.String{String: "#CDCFEE", Valid: true},
-			Description:   "The Common Voice project is Mozilla’s initiative to help teach machines how real people speak.\nVoice is natural, voice is human. That’s why we’re fascinated with creating usable voice technology for our machines. But to create voice systems, an extremely large amount of voice data is required.\n\nMost of the data used by large companies isn’t available to the majority of people. We think that stifles innovation. So we’ve launched Project Common Voice, a project to help make voice recognition open to everyone.",
-			SetupDuration: nulls.String{String: "1'", Valid: false},
-			Logo:          "https://voice.mozilla.org/img/cv-logo-bw.svg",
-			Link:          "https://voice.mozilla.org/en",
-			Tags:          []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
-			IssuesCount:   33,
+			DisplayName: "Common Voice",
+			FirstColor:  "#ABDEF5",
+			SecondColor: nulls.String{String: "#CDCFEE", Valid: true},
+			Description: "The Common Voice project is Mozilla’s initiative to help teach machines how real people speak.\nVoice is natural, voice is human. That’s why we’re fascinated with creating usable voice technology for our machines. But to create voice systems, an extremely large amount of voice data is required.\n\nMost of the data used by large companies isn’t available to the majority of people. We think that stifles innovation. So we’ve launched Project Common Voice, a project to help make voice recognition open to everyone.",
+			Logo:        "https://voice.mozilla.org/img/cv-logo-bw.svg",
+			Link:        "https://voice.mozilla.org/en",
+			Tags:        []string{"nodejs", "npm", "ffmpeg", "docker", "yarn"},
+			IssuesCount: 33,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/mozilla/voice-web",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -47,8 +48,10 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "1'", Valid: true},
 			Tags:          []string{"javascript", "vr", "webvr", "threejs", "html", "oculus"},
 			IssuesCount:   238,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/aframevr/aframe/",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -61,8 +64,10 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "17'", Valid: true},
 			Tags:          []string{"javascript", "html", "mobile", "browser"},
 			IssuesCount:   238,
+			IsGitHub:		 true,
 		},
 		RepositoryUrl: "https://github.com/mozilla-mobile/focus-android",
+		IsGitHub:		 true,
 	},
 	{
 		Project: models.Project{
@@ -75,6 +80,8 @@ var repositories = models.Repositories{
 			SetupDuration: nulls.String{String: "5'", Valid: true},
 			Tags:          []string{"nodejs", "npm", "react", "redux", "javascript"},
 			IssuesCount:   7,
+			IsGitHub:		 true,
 		},
-		RepositoryUrl: "https://github.com/firefox-devtools/debugger",
+		RepositoryUrl: "https://github.com/devtools-html/debugger.html",
+		IsGitHub:		 true,
 	}}
