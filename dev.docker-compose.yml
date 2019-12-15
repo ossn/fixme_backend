@@ -14,8 +14,8 @@ services:
       - ./:/go/src/github.com/ossn/fixme_backend/
     environment:
       DATABASE_URL: "postgres://USER:PASSWORD@db:5432/fixme_backend_development?sslmode=disable"
-      GITHUB_TOKEN: "5aaaa0369e2219ea53680c4368fa8066716dd9ac"
-      GITLAB_TOKEN: "3pnz2a1NhP5txyXL9q1Q"
+      GITHUB_TOKEN: "698ce2d4343b5a4db8dd443817d68b10287b8bd6"
+      GITLAB_TOKEN: "x7P_6CZ3zXP9zW741iQx"
       JWT_SECRET: "ADD_A_JWT_SECRET"
       REDIS_SERVER: "cache:6379"
     ports:

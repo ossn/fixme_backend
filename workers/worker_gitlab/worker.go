@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"time"
+  "encoding/base64"
 
 	"github.com/ossn/fixme_backend/models"
 	"github.com/pkg/errors"
@@ -55,6 +56,7 @@ func (w *Worker) startPolling(c <-chan os.Signal) {
 
 // Func to start repo topics polling
 func (w *Worker) repositoryTopicsPolling() {
+	create_technologies_map()
 	for {
 		go w.UpdateRepositoryTopics()
 		time.Sleep(1 * time.Hour)
@@ -71,20 +73,53 @@ func (w *Worker) UpdateRepositoryTopics() {
 		return
 	}
 	for i, project := range projects {
-		tags, _, err := client.Tags.ListTags(project.ProjectID, nil)
+
+		filteredTechnologies := []string{}
+
+		projectInfo, _, err := client.Projects.GetProject(project.ProjectID, nil)
 
 		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load projects from gitlab"))
-			continue
+			fmt.Println(errors.WithMessage(err, "couldn't find languages"))
+			return
+		} else {
+			description := stringToWords(projectInfo.Description)
+			filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(description)...)
 		}
 
-		projectTags := []string{}
-		for _, tag := range tags {
-			projectTags = append(projectTags, tag.Name)
+		readmeOptions := &gitlab.GetFileOptions{
+			Ref: gitlab.String("master"),
+		}
+		response, _, err := client.RepositoryFiles.GetFile(project.ProjectID, "README.md", readmeOptions)
+		if err != nil {
+			fmt.Println(err)
+		}	else {
+			data, err := base64.StdEncoding.DecodeString(response.Content)
+			if err != nil {
+							fmt.Println("error:", err)
+			} else {
+				readme := stringToWords(string(data))
+				filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
+			}
 		}
 
+		fmt.Println(cleanupArray(filteredTechnologies))
+		project.Tags = cleanupArray(filteredTechnologies)
 		project.IsGitHub = false
-		project.Tags = projectTags
+
+		//Find languages
+		languages, _, err := client.Projects.GetProjectLanguages(project.ProjectID, nil)
+
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "couldn't find languages"))
+			return
+		}
+
+		projectLanguages := []string{}
+		for language, _ := range *languages {
+			projectLanguages = append(projectLanguages, language)
+		}
+
+		project.Languages = projectLanguages
 
 		verr, err := project.Validate(models.DB)
 		if verr.HasAny() {
@@ -120,23 +155,6 @@ func (w *Worker) getInitialIssues() {
 		return
 	}
 
-	//Find primary language
-	languages, _, err := client.Projects.GetProjectLanguages(lastUpdatedProject.ProjectID, nil)
-
-	if err != nil {
-		fmt.Println(errors.WithMessage(err, "couldn't find language"))
-		return
-	}
-
-	var max float32 = -1.0
-	var primaryLanguage = ""
-
-	for language, percentage := range *languages {
-		if(percentage > max) {
-			primaryLanguage = language
-			max = percentage
-		}
-	}
 
 	// Find issues
 	openState := "opened"
@@ -153,20 +171,20 @@ func (w *Worker) getInitialIssues() {
 
 	// full pages (20) of issues
 	for len(issueData) == 20 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, &primaryLanguage, true)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, true)
 		issuesOptions.ListOptions.Page = response.NextPage
 		issueData, response, err = client.Issues.ListProjectIssues(lastUpdatedProject.ProjectID, issuesOptions)
 	}
 
 	// last page of issues
 	if len(issueData) > 0 {
-		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, &primaryLanguage, false)
+		go w.parseAndSaveIssues(issueData, &lastUpdatedProject, lastUpdatedProject.Languages, false)
 	}
 }
 
 
 // Parse and save gitlab issues
-func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, language *string, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.Project, languages []string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
 	for _, node := range issueData {
@@ -178,7 +196,7 @@ func (w *Worker) parseAndSaveIssues(issueData []*gitlab.Issue, project *models.P
 			Number:       node.IID,
 			URL:          node.WebURL,
 			ProjectID:    project.ID,
-			Language:     strings.ToLower(*language),
+			Languages:    languages,
 		}
 
 		// Parse gitlab labels

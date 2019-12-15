@@ -23,6 +23,7 @@ type Project struct {
 	Link string `json:"link" db:"link"`
 	Name string `json:"name" db:"name"`
 	Description string `json:"description" db:"description"`
+	Languages slices.String `json:"languages" db:"languages"`
 	Tags slices.String `json:"tags" db:"tags"`
 	IssuesCount int `json:"issues_count" db:"issues_count"`
 	Issues Issues `json:"issues" db:"-" has_many:"issues"`

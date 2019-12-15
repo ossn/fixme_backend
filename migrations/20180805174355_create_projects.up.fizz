@@ -8,6 +8,7 @@ create_table("projects") {
 	t.Column("link", "string", {"unique": true})
 	t.Column("name", "string", {"size": 150})
 	t.Column("description", "text", {})
+	t.Column("languages", "varchar[]", {"null": true})
 	t.Column("tags", "varchar[]", {"size": 80})
 	t.Column("issues_count", "integer", {})
 	t.Column("is_github", "bool", {"default": false})

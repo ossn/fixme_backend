@@ -67,13 +67,13 @@ var projects = Projects {
 		Link: "https://gitlab.com/yale-sdmp/vesta",
 		IsGitHub: false,
 	}, {
-		ProjectID: 4856282,
-		Name: "redream",
+		ProjectID: 36189,
+		Name: "Client",
 		FirstColor: "#B3007F",
 		SecondColor: "#B3007F",
-		Description: "Work In Progress SEGA Dreamcast emulator",
-		Logo: "http://www.fasebonus.net/wp-content/uploads/2014/02/wdreamcast-400x300.jpg",
-		Link: "https://gitlab.com/inolen/redream",
+		Description: "Android client application",
+		Logo: "https://assets.gitlab-static.net/uploads/-/system/project/avatar/36189/ic_launcher.png?width=64",
+		Link: "https://gitlab.com/fdroid/fdroidclient",
 		IsGitHub: false,
 	}, {
 		ProjectID: 4339844,
@@ -99,6 +99,14 @@ var projects = Projects {
 		Description: "Mozilla community directory -- A centralized directory of all Mozilla contributors!",
 		Logo: "https://i1.wp.com/cdn.mozillians.org/media/img/default_avatar.png?ssl=1",
 		Link: "https://github.com/mozilla/mozillians",
+		IsGitHub: true,
+	}, {
+		Name: "Test by Agis",
+		FirstColor: "#18778F",
+		SecondColor: "#29978F",
+		Description: "Test Repo!!!",
+		Logo: "https://i1.wp.com/cdn.mozillians.org/media/img/default_avatar.png?ssl=1",
+		Link: "https://github.com/kounelisagis/aRepo",
 		IsGitHub: true,
 	},
 }

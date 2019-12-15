@@ -4,8 +4,8 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/ossn/fixme_backend/models"
-	"github.com/ossn/fixme_backend/worker_github"
-	"github.com/ossn/fixme_backend/worker_gitlab"
+	"github.com/ossn/fixme_backend/workers/worker_github"
+	"github.com/ossn/fixme_backend/workers/worker_gitlab"
 	"github.com/pkg/errors"
 )
 

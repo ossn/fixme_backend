@@ -7,8 +7,8 @@ import (
 	"os/signal"
 
 	"github.com/ossn/fixme_backend/actions"
-	"github.com/ossn/fixme_backend/worker_github"
-	"github.com/ossn/fixme_backend/worker_gitlab"
+	"github.com/ossn/fixme_backend/workers/worker_github"
+	"github.com/ossn/fixme_backend/workers/worker_gitlab"
 )
 
 // main is the starting point to your Buffalo application.
