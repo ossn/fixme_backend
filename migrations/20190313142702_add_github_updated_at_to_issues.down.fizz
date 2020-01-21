@@ -1,0 +1,1 @@
+drop_column("issues", "github_updated_at")
