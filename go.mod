@@ -10,7 +10,6 @@ require (
 	github.com/gobuffalo/envy v1.7.0
 	github.com/gobuffalo/flect v0.1.6 // indirect
 	github.com/gobuffalo/mw-contenttype v0.0.0-20190224202710-36c73cc938f3
-	github.com/gobuffalo/mw-csrf v0.0.0-20190129204204-25460a055517 // indirect
 	github.com/gobuffalo/mw-paramlogger v0.0.0-20190224201358-0d45762ab655
 	github.com/gobuffalo/mw-tokenauth v0.0.0-20190224160709-de0b19e98543
 	github.com/gobuffalo/nulls v0.1.0

@@ -70,7 +70,7 @@ func (v IssuesResource) ListOpen(c buffalo.Context) error {
 
 	if len(*issues) < 1 {
 		//TODO: send error to a logger package which will ignore it if nil
-		if err := q.Where(whereClause).All(issues).Order("github_updated_at desc"); err != nil {
+		if err := q.Where(whereClause).Order("github_updated_at desc").All(issues); err != nil {
 			return errors.WithStack(err)
 		}
 		jsonIssues, err := json.Marshal(issues)
@@ -108,7 +108,7 @@ func (v IssuesResource) List(c buffalo.Context) error {
 	q := tx.PaginateFromParams(params).Eager()
 
 	// Retrieve all Issues from the DB
-	if err := q.All(issues).Order("github_updated_at desc"); err != nil {
+	if err := q.Order("github_updated_at desc").All(issues); err != nil {
 		return errors.WithStack(err)
 	}
 	c.Set("pagination", q.Paginator)
