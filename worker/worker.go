@@ -1,4 +1,4 @@
-package worker_github
+package worker
 
 import (
 	"context"
@@ -9,7 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/uuid"
+	"github.com/ossn/fixme_backend/cache"
 	"github.com/ossn/fixme_backend/models"
+
+	"github.com/gobuffalo/nulls"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
@@ -18,6 +22,79 @@ import (
 type (
 	Worker struct {
 		ctx context.Context
+	}
+
+	/**
+	* GraphQL Types
+	 */
+
+	PageInfo struct {
+		StartCursor     string
+		HasPreviousPage bool
+	}
+	Issues struct {
+		Nodes []struct {
+			Title      string
+			Body       string
+			Closed     bool
+			Number     int
+			URL        string
+			CreatedAt  string
+			DatabaseID int
+			Labels     struct {
+				Nodes []struct {
+					Name string
+				}
+			} `graphql:"labels(first:100)"`
+		}
+		PageInfo PageInfo
+	}
+
+	language struct {
+		Repository struct {
+			PrimaryLanguage struct {
+				Name string
+			}
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	initialIssueQuery struct {
+		Repository struct {
+			Issues Issues `graphql:"issues(last: 100)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	issueQueryWithBefore struct {
+		Repository struct {
+			Issues Issues `graphql:"issues(last: 100, before: $before)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	tagsQuery struct {
+		Repository struct {
+			RepositoryTopics struct {
+				Nodes []struct {
+					Topic struct {
+						Name string
+					}
+				}
+			} `graphql:"repositoryTopics(first: 100)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	issueStatusQuery struct {
+		Repository struct {
+			Issue struct {
+				Closed bool
+			} `graphql:"issue(number: $number)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	rateLimitQuery struct {
+		RateLimit struct {
+			Remaining int    `graphql:"remaining"`
+			ResetAt   string `graphql:"resetAt"`
+		} `graphql:"rateLimit"`
 	}
 )
 
@@ -84,61 +161,42 @@ func (w *Worker) checkRateLimitStatus() (bool, time.Time, error) {
 
 // Func to start repo topics polling
 func (w *Worker) repositoryTopicsPolling() {
-	create_technologies_map()
 	for {
 		go w.UpdateRepositoryTopics()
 		time.Sleep(1 * time.Hour)
 	}
 }
 
-// Get all the topics repositories and set them to the project
+// Get all the tags repositories and set them to the project
 func (w *Worker) UpdateRepositoryTopics() {
 	w.waitUntilLimitIsRefreshed()
-	projects := models.Projects{}
-	err := models.DB.Where("is_github = ?", true).All(&projects)
+	repos := models.Repositories{}
+	err := models.DB.All(&repos)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "failed to get repos"))
 		return
 	}
-	for i, project := range projects {
-		name, owner, err := getNameAndOwner(project.Link)
-
+	repoIndexMap := make(map[uuid.UUID][]int, len(repos))
+	for i, repo := range repos {
+		repoIndexMap[repo.ProjectID] = append(repoIndexMap[repo.ProjectID], i)
+		name, owner, err := getNameAndOwner(repo.RepositoryUrl)
 		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load repos from gitlab"))
+			continue
+		}
+		tags := tagsQuery{}
+		err = client.Query(w.ctx, &tags, map[string]interface{}{"name": name, "owner": owner})
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "couldn't load repos from github"))
 			continue
 		}
 
-		projectInfo := repoQuery{}
-		err = client.Query(w.ctx, &projectInfo, map[string]interface{}{"name": name, "owner": owner})
-		if err != nil {
-			fmt.Println(errors.Wrap(err, "couldn't load repo's info from github"))
-			continue
+		repoTags := []string{}
+		for _, tag := range tags.Repository.RepositoryTopics.Nodes {
+			repoTags = append(repoTags, tag.Topic.Name)
 		}
 
-		description := strings.FieldsFunc(projectInfo.Repository.Description, split)
-		filteredTechnologies := searchForMatchingTechnologies(description)
-
-		readme := strings.FieldsFunc(projectInfo.Repository.Object.Blob.Text, split)
-		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(readme)...)
-
-
-		var topics []string
-		for _, topic := range projectInfo.Repository.RepositoryTopics.Nodes {
-			topics = append(topics, topic.Topic.Name)
-		}
-		filteredTechnologies = append(filteredTechnologies, searchForMatchingTechnologies(topics)...)
-
-    var projectLanguages []string
-		for _, language := range projectInfo.Repository.Languages.Edges {
-			projectLanguages = append(projectLanguages, language.Node.Name)
-		}
-
-		technologies := append(cleanupArray(filteredTechnologies), projectLanguages...)
-		project.Technologies = technologies
-
-		project.IsGitHub = true
-
-		verr, err := project.Validate(models.DB)
+		repo.Tags = cleanupArray(repoTags)
+		verr, err := repo.Validate(models.DB)
 		if verr.HasAny() {
 			fmt.Println(verr.Error())
 			continue
@@ -147,11 +205,55 @@ func (w *Worker) UpdateRepositoryTopics() {
 			fmt.Println(errors.Wrap(err, "couldn't save repos from github"))
 			continue
 		}
+		repos[i] = repo
+	}
+	verr, err := models.DB.ValidateAndUpdate(&repos)
+	if err != nil || verr.HasAny() {
+		fmt.Println(err, verr.Error())
+	}
+
+	projects := models.Projects{}
+	err = models.DB.All(&projects)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "failed to get repos"))
+		return
+	}
+	for i, project := range projects {
+		repoIDs, exists := repoIndexMap[project.ID]
+		projectRepos := models.Repositories{}
+		if !exists {
+			err = models.DB.Where("project_id = ?", project.ID).All(&projectRepos)
+			if err != nil {
+				fmt.Println(errors.Wrap(err, "failed to find repos"))
+				continue
+			}
+		} else {
+			for _, index := range repoIDs {
+				projectRepos = append(projectRepos, repos[index])
+			}
+		}
+
+		tags := []string{}
+		for _, repo := range projectRepos {
+			tags = append(tags, repo.Tags...)
+		}
+
+		tags = cleanupArray(tags)
+		project.Tags = tags
+		verr, err := project.Validate(models.DB)
+		if verr.HasAny() {
+			fmt.Println(verr.Error())
+			continue
+		}
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "failed to save project"))
+			continue
+		}
 		projects[i] = project
 	}
 
-	verr, err := models.DB.ValidateAndUpdate(&projects)
-		if err != nil || verr.HasAny() {
+	verr, err = models.DB.ValidateAndUpdate(&repos)
+	if err != nil || verr.HasAny() {
 		fmt.Println(err, verr.Error())
 	}
 }
@@ -173,15 +275,15 @@ func (w *Worker) waitUntilLimitIsRefreshed() {
 // Get first issues
 func (w *Worker) getInitialIssues() {
 	w.waitUntilLimitIsRefreshed()
-	lastUpdatedProject := models.Project{}
-	err := models.DB.Where("is_github = ?", true).Order("last_parsed asc").First(&lastUpdatedProject)
+	lastUpdatedRepo := models.Repository{}
+	err := models.DB.Order("last_parsed asc").First(&lastUpdatedRepo)
 
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "failed to get issues"))
 		return
 	}
 
-	name, owner, err := getNameAndOwner(lastUpdatedProject.Link)
+	name, owner, err := getNameAndOwner(lastUpdatedRepo.RepositoryUrl)
 	if err != nil {
 		return
 	}
@@ -193,18 +295,25 @@ func (w *Worker) getInitialIssues() {
 		return
 	}
 
+	languageRequest := language{}
+	err = client.Query(w.ctx, &languageRequest, variables)
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "couldn't find language"))
+		return
+	}
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedProject, hasPreviousPage)
+	go w.parseAndSaveIssues(issueQueryWithBefore(issueData), &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedProject)
+		w.getExtraIssues(&name, &owner, &issueData.Repository.Issues.PageInfo.StartCursor, &lastUpdatedRepo, &languageRequest.Repository.PrimaryLanguage.Name)
+
 	}
 
 }
 
 // Get next page of issues
-func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, project *models.Project,) {
-w.waitUntilLimitIsRefreshed()
+func (w *Worker) getExtraIssues(name, owner *githubv4.String, before *string, repository *models.Repository, language *string) {
+	w.waitUntilLimitIsRefreshed()
 	variables := map[string]interface{}{"name": *name, "owner": *owner, "before": githubv4.String(*before)}
 	issueData := issueQueryWithBefore{}
 	err := client.Query(w.ctx, &issueData, variables)
@@ -214,62 +323,57 @@ w.waitUntilLimitIsRefreshed()
 	}
 
 	hasPreviousPage := issueData.Repository.Issues.PageInfo.HasPreviousPage
-	go w.parseAndSaveIssues(issueData, project, hasPreviousPage)
+	go w.parseAndSaveIssues(issueData, repository, language, hasPreviousPage)
 
 	if hasPreviousPage {
-		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, project)
+		w.getExtraIssues(name, owner, &issueData.Repository.Issues.PageInfo.StartCursor, repository, language)
 	}
 
 }
 
 // Parse and save github issues
-func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *models.Project, hasPreviousPage bool) {
+func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, repository *models.Repository, language *string, hasPreviousPage bool) {
 	issuesToCreate := models.Issues{}
 	issuesToUpdate := models.Issues{}
-
 	for _, node := range issueData.Repository.Issues.Nodes {
 		githubIssue := &models.Issue{
-			IssueID:	    node.DatabaseID,
-			Body:         node.Body,
-			Title:        node.Title,
+			GithubID:     node.DatabaseID,
+			Body:         nulls.String{String: node.Body, Valid: node.Body != ""},
+			Title:        nulls.String{String: node.Title, Valid: node.Title != ""},
+			Closed:       node.Closed,
 			Number:       node.Number,
 			URL:          node.URL,
-			ProjectID:    project.ID,
-			Closed:       node.Closed,
+			RepositoryID: repository.ID,
+			ProjectID:    repository.ProjectID,
+			Language:     nulls.String{String: strings.ToLower(*language), Valid: *language != ""},
 		}
 
-
-		// Parse gitlab labels
-		var labels []string
-		for _, node := range node.Labels.Nodes {
-			label := node.Name
-			labels = append(labels, label)
-		}
-
-		difficulty := searchForMatchingLabels(labels)
-
-		if difficulty == "unknown" {
-			for _, label := range labels {
-				// Split label based on known delimeters
-				parts := strings.FieldsFunc(label, split)
-				// If label hasn't been matched try again with the splited string
-				if len(parts) > 1 {
-						difficulty = searchForMatchingLabels(parts)
-				}
-				if difficulty == "easy" {
-					break
+		// Parse github labels
+		labels := []string{}
+		for _, label := range node.Labels.Nodes {
+			name := &label.Name
+			labels = append(labels, *name)
+			// Search for known labels
+			matched := searchForMatchingLabels(name, githubIssue)
+			// Split name based on known delimeters
+			tmp := strings.FieldsFunc(*name, split)
+			// If label hasn't been matched try again with the splited string
+			if !matched && len(tmp) > 1 {
+				for _, label := range tmp {
+					searchForMatchingLabels(&label, githubIssue)
 				}
 			}
 		}
 
-		githubIssue.IsGitHub = true
-		githubIssue.Technologies = project.Technologies
 		githubIssue.Labels = labels
-		githubIssue.ExperienceNeeded = difficulty
+		// Initialize experience needed with moderate
+		if !githubIssue.ExperienceNeeded.Valid {
+			githubIssue.ExperienceNeeded = nulls.String{String: "moderate", Valid: true}
+		}
 
 		// Allocate empty issue
 		dbIssue := models.Issue{}
-		if err := models.DB.Where("is_github = ? and issue_id = ?", "true", node.DatabaseID).First(&dbIssue); err != nil {
+		if err := models.DB.Where("github_id = ?", node.DatabaseID).First(&dbIssue); err != nil {
 			verrs, err := githubIssue.Validate(models.DB)
 			if verrs.HasAny() {
 				fmt.Println(verrs.Error())
@@ -282,7 +386,6 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 			issuesToCreate = append(issuesToCreate, *githubIssue)
 			continue
 		}
-
 		githubIssue.ID = dbIssue.ID
 		githubIssue.UpdatedAt = time.Now()
 		verrs, err := githubIssue.Validate(models.DB)
@@ -311,38 +414,62 @@ func (w *Worker) parseAndSaveIssues(issueData issueQueryWithBefore, project *mod
 
 	// Update repo record once all the github issues have been parsed
 	if !hasPreviousPage {
-		w.updateProjectOnFinish(project)
+		w.updateProjectOnFinish(repository)
 	}
 }
 
 // Update project info when issues have been updated
-func (w *Worker) updateProjectOnFinish(project *models.Project) {
-	go w.searchForDanglingIssues(project)
+func (w *Worker) updateProjectOnFinish(repository *models.Repository) {
+	go w.searchForDanglingIssues(repository)
 	var err error
 
-	project.IssuesCount, err = models.DB.Where("closed = ? and project_id = ?", "false", project.ID).Count(&models.Issue{})
+	repository.IssueCount, err = models.DB.Where("closed=false and repository_id=?", repository.ID).Count(&models.Issue{})
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Failed to count"))
 	}
 
-	project.LastParsed = time.Now()
-	verr, err := models.DB.ValidateAndUpdate(project)
+	repository.LastParsed = time.Now()
+	verr, err := models.DB.ValidateAndUpdate(repository)
 	if verr.HasAny() {
 		fmt.Println(verr.Error())
 	}
 	if err != nil {
-		fmt.Println(errors.WithMessage(err, "failed update last parsed project"))
+		fmt.Println(errors.WithMessage(err, "failed update last parsed repo"))
+	}
+
+	repos := &models.Repositories{}
+	if err = models.DB.Where("project_id=?", repository.ProjectID).All(repos); err != nil {
+		fmt.Println(errors.WithMessage(err, "Failed to find repos"))
+	}
+
+	count := 0
+	for _, repo := range *repos {
+		count += repo.IssueCount
+	}
+
+	project := &models.Project{}
+	if err = models.DB.Find(project, repository.ProjectID); err != nil {
+		fmt.Println(errors.WithMessage(err, "Failed to find project"))
+	}
+
+	project.IssuesCount = count
+	verr, err = models.DB.ValidateAndUpdate(project)
+	if verr.HasAny() {
+		fmt.Println(verr.Error())
+	}
+	if err != nil {
+		fmt.Println(errors.WithMessage(err, "Failed to update project"))
 	}
 }
 
 // Cleanup project issues that have been deleted or couldn't be found in the repo
-func (w *Worker) searchForDanglingIssues(project *models.Project) {
+func (w *Worker) searchForDanglingIssues(repository *models.Repository) {
 	issues := models.Issues{}
-	name, owner, err := getNameAndOwner(project.Link)
+	name, owner, err := getNameAndOwner(repository.RepositoryUrl)
 	if err != nil {
 		return
 	}
-	err = models.DB.Where("updated_at < current_timestamp - interval '6 minutes' and closed = false and project_id = ?", project.ID).All(&issues)
+	err = models.DB.Where("updated_at < current_timestamp - interval '6 minutes' and closed = false and project_id = ?", repository.ProjectID).All(&issues)
 	if err != nil {
 		fmt.Println(errors.WithMessage(err, "Failed to find unclosed issues"))
 		return
@@ -355,11 +482,16 @@ func (w *Worker) searchForDanglingIssues(project *models.Project) {
 		err = client.Query(w.ctx, &issueStatus, requestParams)
 		// This might close an issue if there is a network error
 		// but it's better to close an issue and reopen it later rather than leaving dangling issues
-		if err != nil || issueStatus.Repository.Issue.Closed {
-			fmt.Println("couldn't load issue from github "+string(owner)+" "+string(name))
+		if err != nil {
+			fmt.Println(errors.WithMessage(err, "couldn't load issue from github "+string(owner)+" "+string(name)))
 			issue.Closed = true
 			issuesToClose = append(issuesToClose, issue)
 			continue
+		}
+
+		if issueStatus.Repository.Issue.Closed {
+			issue.Closed = true
+			issuesToClose = append(issuesToClose, issue)
 		}
 	}
 

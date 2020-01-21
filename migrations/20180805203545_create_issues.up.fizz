@@ -1,16 +1,31 @@
 create_table("issues") {
 	t.Column("id", "uuid", {"primary": true})
-	t.Column("issue_id", "integer", {"unique": true})
 	t.Column("title", "text", {"null": true})
-	t.Column("experience_needed", "string", {"null": true, "default": "non-easy"})
+	t.Column("experience_needed", "string", {"null": true, "default": "moderate"})
+	t.Column("expected_time", "string", {"null": true})
+	t.Column("language", "string", {"null": true})
+	t.Column("tech_stack", "string", {"null": true})
+	t.Column("github_id", "integer", {"unique": true})
+	t.Column("number", "integer", {})
+	t.Column("labels", "varchar[]", {"null": true})
 	t.Column("url", "text", {"unique": true})
 	t.Column("body", "text", {"null": true})
 	t.Column("type", "string", {"null": true})
+	t.Column("repository_id", "uuid", {})
 	t.Column("project_id", "uuid", {})
-	t.ForeignKey("project_id", {"projects": ["id"]}, {})
-	t.Column("number", "integer", {})
 	t.Column("closed", "bool", {"default": false})
-	t.Column("technologies", "varchar[]", {"null": true})
-	t.Column("labels", "varchar[]", {"null": true})
-	t.Column("is_github", "bool", {"default": false})
 }
+
+	add_foreign_key("issues", "repository_id", {"repositories": ["id"]}, {
+  "name": "issues_repositories_id_fk",
+  "on_delete": "CASCADE",
+  "on_update": "CASCADE"})
+
+	add_foreign_key("issues", "project_id", {"projects": ["id"]}, {
+  "name": "issues_projects_id_fk",
+  "on_delete": "CASCADE",
+  "on_update": "CASCADE"})
+
+	add_index("issues", "experience_needed", {"name": "index_issue_experience_needed"})
+	add_index("issues", "language", {"name": "index_issue_language"})
+	add_index("issues", "type", {"name": "index_issue_type"})
