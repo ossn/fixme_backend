@@ -1,0 +1,1 @@
+add_column("repositories", "tags", "varchar[]", {"size": 80, "null": true})

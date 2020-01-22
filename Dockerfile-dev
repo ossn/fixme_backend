@@ -6,9 +6,6 @@ WORKDIR /go/src/github.com/ossn/fixme_backend
 RUN mkdir ~/.ssh && ssh-keyscan -t rsa github.com >~/.ssh/known_hosts
 
 # Build app
-COPY Gopkg.toml Gopkg.lock ./
-RUN go get -u github.com/golang/dep/cmd/dep
-RUN dep ensure -vendor-only
 ENV ADDR=0.0.0.0
 ENV GO111MODULE=on
 COPY . .
